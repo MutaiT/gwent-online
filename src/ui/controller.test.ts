@@ -139,7 +139,7 @@ describe("describeAction", () => {
     const unit = take(s, (c) => c.kind === "unit");
     expect(describeAction(s.game, { type: "play", player: HUMAN, cardId: unit.id })).toBe(`You played ${unit.name}`);
     expect(describeAction(s.game, { type: "pass", player: AI })).toBe("Opponent passed");
-    expect(describeAction(s.game, { type: "leader", player: HUMAN })).toBe("You used Marshal of the Vale");
+    expect(describeAction(s.game, { type: "leader", player: HUMAN })).toBe("You used Foltest: The Siegemaster");
     expect(describeAction(s.game, { type: "play", player: HUMAN, cardId: unit.id, row: "ranged" })).toBe(`You played ${unit.name} on the ranged row`);
   });
 });

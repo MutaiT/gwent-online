@@ -401,6 +401,91 @@ describe("leaders", () => {
   });
 });
 
+describe("leaders that use the deck or the graveyards", () => {
+  const frostFromDeck: Leader = { id: "fl", name: "Frost leader", effect: { type: "playWeather", weather: "bitingFrost" } };
+  const shuffler: Leader = { id: "sl", name: "Shuffle leader", effect: { type: "shuffleGraveyards" } };
+
+  it("plays a weather card of that kind from your deck and keeps it in play until the round ends", () => {
+    const g0 = setup({ leaders: [frostFromDeck, null] });
+    g0.players[0].deck = [unit("x", 1), weatherCard("frost", "bitingFrost"), weatherCard("fog", "impenetrableFog")];
+    const g = useLeader(g0, 0);
+    expect(g.players[0].board.close.weather).toBe(true);
+    expect(g.players[1].board.close.weather).toBe(true);
+    expect(ids(g.players[0].deck)).toEqual(["x", "fog"]);
+    expect(ids(g.players[0].inPlay)).toEqual(["frost"]);
+    expect(g.players[0].leaderUsed).toBe(true);
+    expect(g.current).toBe(1);
+  });
+
+  it("only takes the matching weather, and the first one if there are several", () => {
+    const g0 = setup({ leaders: [frostFromDeck, null] });
+    g0.players[0].deck = [weatherCard("f1", "bitingFrost"), weatherCard("f2", "bitingFrost")];
+    const g = useLeader(g0, 0);
+    expect(ids(g.players[0].deck)).toEqual(["f2"]);
+  });
+
+  it("cannot be used when the deck has no such card, is not offered, and stays unused", () => {
+    const g0 = setup({ leaders: [frostFromDeck, null] });
+    g0.players[0].deck = [weatherCard("fog", "impenetrableFog")];
+    expect(reject(g0, { type: "leader", player: 0 })).toBe("That weather card is not in your deck");
+    expect(legalActions(g0).some((a) => a.type === "leader")).toBe(false);
+    expect(g0.players[0].leaderUsed).toBe(false);
+  });
+
+  it("a Clear Weather leader card from the deck clears the weather and goes to the graveyard", () => {
+    const clear: Leader = { id: "cl", name: "Clear", effect: { type: "playWeather", weather: "clearWeather" } };
+    const g0 = setup({ leaders: [clear, null] });
+    g0.players[0].deck = [weatherCard("c1", "clearWeather")];
+    g0.players[1].board.close.weather = true;
+    const g = useLeader(g0, 0);
+    expect(g.players[1].board.close.weather).toBe(false);
+    expect(ids(g.players[0].graveyard)).toEqual(["c1"]);
+  });
+
+  it("shuffles both graveyards back into the decks", () => {
+    const g0 = setup({ leaders: [shuffler, null] });
+    g0.players[0].graveyard = [unit("a1", 3), unit("a2", 4)];
+    g0.players[1].graveyard = [unit("b1", 5)];
+    const decks = [g0.players[0].deck.length, g0.players[1].deck.length];
+    const g = useLeader(g0, 0);
+    expect(g.players[0].graveyard).toEqual([]);
+    expect(g.players[1].graveyard).toEqual([]);
+    expect(g.players[0].deck).toHaveLength(decks[0]! + 2);
+    expect(g.players[1].deck).toHaveLength(decks[1]! + 1);
+    expect(ids(g.players[0].deck)).toEqual(expect.arrayContaining(["a1", "a2"]));
+    expect(ids(g.players[1].deck)).toContain("b1");
+  });
+
+  it("shuffling is repeatable for the same seed", () => {
+    const run = () => {
+      const g0 = setup({ leaders: [shuffler, null], seed: 9 });
+      g0.players[0].graveyard = [unit("a1", 3), unit("a2", 4), unit("a3", 5)];
+      return ids(useLeader(g0, 0).players[0].deck).join(",");
+    };
+    expect(run()).toBe(run());
+  });
+});
+
+describe("heroes still give morale and horn", () => {
+  it("a hero with morale boost raises the other units in its row but not itself", () => {
+    const kayran: UnitCard = { ...unit("kayran", 8, "close", { hero: true, abilities: ["moraleBoost"] }) };
+    const g0 = setup({}, [kayran, unit("w", 5)]);
+    let g = play(g0, 0, "kayran");
+    g = pass(g, 1);
+    g = play(g, 0, "w");
+    expect(rowPower(g.players[0].board.close)).toBe(8 + 6);
+  });
+
+  it("a hero with the horn ability doubles the others but not itself", () => {
+    const hero: UnitCard = { ...unit("hh", 6, "close", { hero: true, abilities: ["horn"] }) };
+    const g0 = setup({}, [hero, unit("w", 5)]);
+    let g = play(g0, 0, "hh");
+    g = pass(g, 1);
+    g = play(g, 0, "w");
+    expect(rowPower(g.players[0].board.close)).toBe(6 + 10);
+  });
+});
+
 describe("random play with factions and leaders", () => {
   function deck(owner: string): Card[] {
     const o = (n: string) => `${owner}${n}`;

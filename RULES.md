@@ -26,6 +26,8 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
 - [x] Order of effects on a unit: weather, tight bond, morale boost, horn
 - [x] Heroes are immune to weather, bond, morale boost and horn
 
+- [x] Heroes are immune to effects but still give morale and horn bonuses to other units (Kayran)
+
 ## Special cards
 - [x] Weather sets non-hero units in the affected row to 1 (both players' rows)
   - Biting Frost: close combat
@@ -61,8 +63,8 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
 - [x] Scoia'tael: if exactly one player is Scoia'tael, they choose who goes first
 - [x] Monsters: one random unit of their own stays on the board after each round
 - [x] Skellige: two random units from the graveyard come back at the start of round 3
-- [x] Leaders, once per match: horn on a row, weather (including Clear Weather), scorch a row
-- [ ] Other leader abilities (for example looking at or discarding opponent cards, drawing, passives)
+- [x] Leaders, once per match: horn on a row, weather (including Clear Weather), scorch a row, play a weather card from your deck, shuffle both graveyards into the decks
+- [ ] Other leader abilities: looking at opponent cards, cancelling a leader, drawing from the opponent's graveyard, discard-and-draw, restoring a card, and the passives (Eredin the Treacherous, Emhyr the Invader, Francesca Hope of the Aen Seidhe, King Bran, Francesca Daisy)\n- [ ] Skellige: Berserker, Young Berserker and Mardroeme transformations; Kambi and Cow avenger
 - [ ] **Verify** these against the original game:
   - Monsters never keep a spy the opponent played onto their side
   - Skellige's returned units are non-heroes, go to their own side, and do not trigger their abilities

@@ -31,9 +31,11 @@ export function CardView({ card, power, size = "board", selected, dimmed, target
   const change =
     unit && shown !== null ? (shown > unit.basePower ? "boosted" : shown < unit.basePower ? "reduced" : "") : "";
 
+  const face = card.officialFace === true && card.art !== undefined;
   const classes = [
     "card",
     `size-${size}`,
+    face ? "face" : "",
     unit ? "unit" : "special",
     unit?.isHero ? "hero" : "",
     selected ? "selected" : "",
@@ -47,7 +49,22 @@ export function CardView({ card, power, size = "board", selected, dimmed, target
     ? `${card.name}, strength ${shown}${unit.isHero ? ", hero" : ""}, ${ROW_LABEL[unit.row]}`
     : `${card.name}, ${specialKind(card as SpecialCard)} card`;
 
-  const body = (
+  // An official card face already has its strength, icons and name printed on it,
+  // so we only add a badge when the strength has been changed.
+  const faceBody = (
+    <>
+      <img className="face-img" src={card.art} alt="" loading="lazy" draggable={false} />
+      {unit && shown !== null && change !== "" && (
+        <span className={`power ${change}`} aria-hidden="true">
+          {shown}
+        </span>
+      )}
+    </>
+  );
+
+  const body = face ? (
+    faceBody
+  ) : (
     <>
       <CardArt card={card} />
       {unit && shown !== null ? (

@@ -37,6 +37,7 @@ export function CardPreview({ item }: { item: Previewed | null }) {
   const { card, power } = item;
   const unit = card.kind === "unit" ? card : null;
   const special = card.kind === "special" ? card : null;
+  const face = card.officialFace === true && card.art !== undefined;
   const shown = unit ? (power ?? unit.basePower) : null;
   const change =
     unit && shown !== null ? (shown > unit.basePower ? "boosted" : shown < unit.basePower ? "reduced" : "") : "";
@@ -47,12 +48,20 @@ export function CardPreview({ item }: { item: Previewed | null }) {
       aria-label="Card preview"
       data-testid="preview"
     >
-      <div className="preview-art">
-        <CardArt card={card} />
-        {unit && shown !== null && <span className={`power ${change}`}>{shown}</span>}
-        {unit && <RowIcon row={unit.row} className="row-icon" />}
-      </div>
-      <h3 className="preview-name">{card.name}</h3>
+      {face ? (
+        <div className="preview-face">
+          <img src={card.art} alt="" />
+          {unit && shown !== null && change !== "" && <span className={`power ${change}`}>{shown}</span>}
+        </div>
+      ) : (
+        <div className="preview-art">
+          <CardArt card={card} />
+          {unit && shown !== null && <span className={`power ${change}`}>{shown}</span>}
+          {unit && <RowIcon row={unit.row} className="row-icon" />}
+        </div>
+      )}
+      {!face && <h3 className="preview-name">{card.name}</h3>}
+      {face && <h3 className="preview-name">{card.name}</h3>}
       <p className="preview-kind">
         {unit
           ? `${unit.isHero ? "Hero · " : ""}${ROW_LABEL[unit.row]} · base strength ${unit.basePower}`

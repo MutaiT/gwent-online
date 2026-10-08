@@ -1,9 +1,11 @@
 import { useEffect, useReducer, useState } from "react";
 import { legalActions, type Action, type PlayerId } from "../engine/game";
+import type { MatchSetup } from "../data/decks";
 import { boardPower } from "../engine/scoring";
 import { Board } from "./Board";
 import { CardView } from "./CardView";
 import { AI, HUMAN, choicesFor, initialState, playableIds, reducer, type UIState } from "./controller";
+import { Menu } from "./Menu";
 import { CardList, LogPanel, Modal, PilesColumn, PlayersColumn } from "./Panels";
 import { CardPreview, PreviewProvider } from "./preview";
 
@@ -14,6 +16,8 @@ export interface AppProps {
   aiDelayMs?: number;
   /** Start from a ready-made state (used by tests). */
   initial?: UIState;
+  /** Skip the menu and start this match straight away. */
+  setup?: MatchSetup;
 }
 
 function freshSeed(): number {
@@ -33,17 +37,18 @@ function statusText(state: UIState): string {
     : "Your turn";
 }
 
-export function App({ seed, aiDelayMs = 700, initial }: AppProps) {
-  const [state, dispatch] = useReducer(reducer, undefined, () => initial ?? initialState(seed ?? freshSeed()));
+export function App({ seed, aiDelayMs = 700, initial, setup }: AppProps) {
+  const [state, dispatch] = useReducer(reducer, undefined, () => initial ?? initialState(seed ?? freshSeed(), setup));
+  const [screen, setScreen] = useState<"menu" | "game">(initial || setup ? "game" : "menu");
   const [viewing, setViewing] = useState<PlayerId | null>(null);
   const { game } = state;
 
   // The opponent moves a moment after its turn starts.
   useEffect(() => {
-    if (game.status !== "playing" || game.current !== AI) return;
+    if (screen !== "game" || game.status !== "playing" || game.current !== AI) return;
     const timer = setTimeout(() => dispatch({ type: "ai" }), aiDelayMs);
     return () => clearTimeout(timer);
-  }, [game, aiDelayMs]);
+  }, [game, aiDelayMs, screen]);
 
   const me = game.players[HUMAN];
   const act = (action: Action) => dispatch({ type: "act", action });
@@ -73,6 +78,23 @@ export function App({ seed, aiDelayMs = 700, initial }: AppProps) {
     else prompt = "That card cannot be played right now.";
   }
 
+  if (screen === "menu") {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <h1>Gwent Online</h1>
+        </header>
+        <Menu
+          initial={state.setup}
+          onStart={(chosen) => {
+            dispatch({ type: "restart", seed: freshSeed(), setup: chosen });
+            setScreen("game");
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <PreviewProvider>
       {(previewed) => (
@@ -84,11 +106,7 @@ export function App({ seed, aiDelayMs = 700, initial }: AppProps) {
             <p className="status" role="status" data-testid="status">
               {statusText(state)}
             </p>
-            <button
-              type="button"
-              className="btn small"
-              onClick={() => dispatch({ type: "restart", seed: freshSeed() })}
-            >
+            <button type="button" className="btn small" onClick={() => setScreen("menu")}>
               New game
             </button>
           </header>
@@ -167,15 +185,11 @@ export function App({ seed, aiDelayMs = 700, initial }: AppProps) {
 
             <LogPanel log={state.log} />
             <footer className="credits">
-              Card art: public-domain illustrations by Howard Pyle, Gustave Doré, John Bauer, Arthur Rackham and others.{" "}
-              <a
-                href="https://github.com/MutaiT/gwent-online/blob/main/ART_CREDITS.md"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Full credits
-              </a>
-            </footer>
+          Unofficial fan project. Card names and pictures belong to CD PROJEKT RED.{" "}
+          <a href="https://github.com/MutaiT/gwent-online/blob/main/ART_CREDITS.md" target="_blank" rel="noreferrer">
+            Credits
+          </a>
+        </footer>
           </main>
 
           {revivePending && (

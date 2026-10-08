@@ -27,7 +27,7 @@ function PlayerPanel({ game, side }: { game: GameState; side: PlayerId }) {
   return (
     <div className={`player-panel ${side === HUMAN ? "mine" : "theirs"}`} data-testid={`score-${side === HUMAN ? "you" : "opponent"}`}>
       <div className="portrait" aria-hidden="true">
-        {name[0]}
+        {me.leader?.art ? <img src={me.leader.art} alt="" /> : name[0]}
       </div>
       <div className="player-info">
         <span className="player-name">{name}</span>
@@ -126,6 +126,7 @@ export function PilesColumn({ game, canAct, onAct, onViewGraveyard }: PilesProps
     <div className="piles-col">
       <div className="pile-group">
         <div className="leader-slot theirs" title={them.leader?.name}>
+          {them.leader?.art && <img className="leader-art" src={them.leader.art} alt="" />}
           <span className="slot-title">Opponent leader</span>
           <span className="leader-name">{them.leader?.name ?? "none"}</span>
           <span className="leader-state">{note(them)}</span>
@@ -145,6 +146,7 @@ export function PilesColumn({ game, canAct, onAct, onViewGraveyard }: PilesProps
           disabled={!leaderReady}
           onClick={() => onAct({ type: "leader", player: HUMAN })}
         >
+          {me.leader?.art && <img className="leader-art" src={me.leader.art} alt="" />}
           <span className="slot-title">Your leader</span>
           <span className="leader-name">
             Leader: {me.leader?.name ?? "none"} ({note(me)})

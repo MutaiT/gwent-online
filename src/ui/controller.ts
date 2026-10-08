@@ -1,5 +1,5 @@
 import { chooseAction } from "../ai/ai";
-import { demoDecks } from "../data/demoCards";
+import { DEFAULT_SETUP, buildMatch, type MatchSetup } from "../data/decks";
 import { applyAction, legalActions, newGame, type Action, type GameState, type PlayerId } from "../engine/game";
 import { seededRng } from "../engine/rng";
 import type { Card, RowName } from "../engine/types";
@@ -16,23 +16,26 @@ export interface UIState {
   selected: string | null;
   error: string | null;
   aiSeed: number;
+  /** The factions and leaders this game was started with, so Play again can reuse them. */
+  setup: MatchSetup;
 }
 
 export type UIAction =
   | { type: "select"; cardId: string | null }
   | { type: "act"; action: Action }
   | { type: "ai" }
-  | { type: "restart"; seed: number }
+  | { type: "restart"; seed: number; setup?: MatchSetup }
   | { type: "dismissError" };
 
-export function initialState(seed: number): UIState {
-  const { decks, options } = demoDecks();
+export function initialState(seed: number, setup: MatchSetup = DEFAULT_SETUP): UIState {
+  const { decks, options } = buildMatch(setup);
   return {
     game: newGame({ decks, rng: seededRng(seed), ...options }),
     log: [],
     selected: null,
     error: null,
     aiSeed: (seed * 7 + 13) >>> 0,
+    setup,
   };
 }
 
@@ -107,7 +110,7 @@ export function reducer(state: UIState, action: UIAction): UIState {
     case "dismissError":
       return { ...state, error: null };
     case "restart":
-      return initialState(action.seed);
+      return initialState(action.seed, action.setup ?? state.setup);
     case "act": {
       if (state.game.current !== HUMAN) return state;
       const next = apply(state, action.action);

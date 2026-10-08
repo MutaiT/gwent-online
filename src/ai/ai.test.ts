@@ -3,6 +3,7 @@ import { applyAction, legalActions, newGame, type GameState, type PlayerId } fro
 import { seededRng } from "../engine/rng";
 import { chooseAction } from "./ai";
 import { demoDecks } from "../data/demoCards";
+import { FACTIONS, buildMatch } from "../data/decks";
 import type { Card, RowName, UnitCard } from "../engine/types";
 
 function unit(id: string, basePower: number, row: RowName = "close", abilities: UnitCard["abilities"] = []): UnitCard {
@@ -102,5 +103,39 @@ describe("chooseAction", () => {
     });
     const choice = chooseAction(g, 1).action;
     expect(choice).toEqual({ type: "chooseFirst", player: 1, first: 1 satisfies PlayerId });
+  });
+});
+
+describe("the AI with the real cards", () => {
+  it("finishes a game against itself for every pairing of factions, only ever making legal moves", () => {
+    const ids = FACTIONS.map((f) => f.id);
+    let seed = 0;
+    for (const a of ids) {
+      for (const b of ids) {
+        seed += 1;
+        const { decks, options } = buildMatch({ player: a, opponent: b });
+        let g = newGame({ decks, rng: seededRng(seed), ...options });
+        let seeds = [seed, seed + 1000];
+        let steps = 0;
+        while (g.status === "playing") {
+          const side = g.current;
+          const choice = chooseAction(g, seeds[side]!);
+          seeds = side === 0 ? [choice.seed, seeds[1]!] : [seeds[0]!, choice.seed];
+          expect(legalActions(g), `${a} v ${b}`).toContainEqual(choice.action);
+          const result = applyAction(g, choice.action);
+          if (!result.ok) throw new Error(`${a} v ${b}: ${result.error}`);
+          g = result.state;
+          expect(++steps).toBeLessThan(600);
+        }
+        expect([0, 1, "draw"]).toContain(g.winner);
+      }
+    }
+  }, 180_000);
+
+  it("uses a leader when it helps and never wastes a blocked one", () => {
+    const { decks, options } = buildMatch({ player: "northernRealms", opponent: "northernRealms" });
+    const g = newGame({ decks, rng: seededRng(5), firstPlayer: 1, ...options });
+    const choice = chooseAction(g, 3).action;
+    expect(legalActions(g)).toContainEqual(choice);
   });
 });

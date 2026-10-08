@@ -1,9 +1,26 @@
 # Art credits
 
-Every card image in this project is a public-domain or CC0 work found on
-[Wikimedia Commons](https://commons.wikimedia.org/). Each was cropped to a portrait shape and
-resized, and some black-and-white plates were toned with a single colour to give each
-deck a consistent look. No artwork from any video game is used.
+## Official card faces
+
+The cards you play with are the real cards from *The Witcher 3: Wild Hunt*, with
+their official card pictures, names and strengths. These belong to
+**CD PROJEKT RED** (Gwent and The Witcher are trademarks of CD PROJEKT S.A.).
+This is an unofficial, non-commercial fan project and is not affiliated with or
+endorsed by CD PROJEKT RED. The pictures were taken from the card list on
+[The Witcher wiki](https://witcher.fandom.com/wiki/Gwent) and are used here to show
+the game's cards. If you are the rights holder and want them removed, please open
+an issue and they will be taken down.
+
+Card strengths, rows and abilities follow the original game. The card list was
+cross-checked against the open-source remake
+[asundr/gwent-classic](https://github.com/asundr/gwent-classic).
+
+## Public-domain art (the original demo decks)
+
+`src/data/demoCards.ts` also holds two decks of my own invention, with artwork that
+is entirely public domain or CC0 from [Wikimedia Commons](https://commons.wikimedia.org/).
+Each image was cropped to a portrait shape and resized, and some black-and-white plates
+were toned with a single colour. These need no permission and can be used freely.
 
 The licence shown is the one recorded on each file's Commons page. Click through to see the full
 description and history.

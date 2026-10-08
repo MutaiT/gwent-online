@@ -28,6 +28,97 @@ function state(hand: Card[], extra: { graveyard?: Card[]; board?: UnitCard[] } =
 const hand = (id: string) => screen.getByTestId(`hand-${id}`);
 const row = (side: 0 | 1, name: RowName) => screen.getByTestId(`row-${side}-${name}`);
 
+describe("the faction menu", () => {
+  it("opens first when no game is given, with all five factions and Northern Realms chosen", () => {
+    render(<App aiDelayMs={10_000_000} />);
+    expect(screen.getByRole("main", { name: "Choose your faction" })).toBeTruthy();
+    const factions = within(screen.getByRole("radiogroup", { name: "Faction" })).getAllByRole("radio");
+    expect(factions.map((f) => f.textContent!.replace(/\s+/g, " ").slice(0, 16))).toEqual([
+      expect.stringContaining("Northern Realms"),
+      expect.stringContaining("Nilfgaardian"),
+      expect.stringContaining("Scoia'tael"),
+      expect.stringContaining("Monsters"),
+      expect.stringContaining("Skellige"),
+    ]);
+    expect(factions[0]!.getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByTestId("status")).toBeNull();
+  });
+
+  it("each faction explains its ability", () => {
+    render(<App aiDelayMs={10_000_000} />);
+    expect(screen.getByText(/Wins any round that ends in a draw/)).toBeTruthy();
+    expect(screen.getByText(/Keeps a random unit on the board after each round/)).toBeTruthy();
+  });
+
+  it("choosing a faction shows its usable leaders, and the ones that are not playable yet", async () => {
+    const user = userEvent.setup();
+    render(<App aiDelayMs={10_000_000} />);
+    await user.click(screen.getByRole("radio", { name: /Nilfgaardian Empire/ }));
+    const leaders = screen.getByRole("radiogroup", { name: "Leader" });
+    expect(within(leaders).getByRole("radio", { name: /His Imperial Majesty/ }).getAttribute("aria-checked")).toBe("true");
+    expect(within(leaders).queryByRole("radio", { name: /The White Flame/ })).toBeNull();
+    expect(within(leaders).getByText("Emhyr var Emreis: The White Flame")).toBeTruthy();
+    expect(within(leaders).getAllByText("coming soon").length).toBeGreaterThan(0);
+  });
+
+  it("Start game begins a match as the chosen faction and leader, against a different faction", async () => {
+    const user = userEvent.setup();
+    render(<App aiDelayMs={10_000_000} />);
+    await user.click(screen.getByRole("radio", { name: /Scoia'tael/ }));
+    await user.click(screen.getByRole("radio", { name: /Francesca Findabair: The Beautiful/ }));
+    await user.click(screen.getByRole("button", { name: "Start game" }));
+    expect(screen.getByRole("main", { name: "Game board" })).toBeTruthy();
+    expect(screen.queryByRole("main", { name: "Choose your faction" })).toBeNull();
+    expect(within(screen.getByTestId("score-you")).getByText("Scoia'tael")).toBeTruthy();
+    const opponent = within(screen.getByTestId("score-opponent")).getByText(/Northern Realms|Nilfgaardian Empire|Monsters|Skellige/);
+    expect(opponent).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Leader: Francesca Findabair: The Beautiful/ })).toBeTruthy();
+  });
+
+  it("New game returns to the menu", async () => {
+    const user = userEvent.setup();
+    render(<App initial={state([unit("a", 4)])} aiDelayMs={10_000_000} />);
+    await user.click(screen.getByRole("button", { name: "New game" }));
+    expect(screen.getByRole("main", { name: "Choose your faction" })).toBeTruthy();
+  });
+
+  it("a setup skips the menu", () => {
+    render(<App setup={{ player: "nilfgaard", opponent: "skellige" }} aiDelayMs={10_000_000} />);
+    expect(screen.queryByRole("main", { name: "Choose your faction" })).toBeNull();
+    expect(within(screen.getByTestId("score-you")).getByText("Nilfgaardian Empire")).toBeTruthy();
+    expect(within(screen.getByTestId("score-opponent")).getByText("Skellige")).toBeTruthy();
+  });
+});
+
+describe("official card faces", () => {
+  it("show the printed face as an image, with no extra badge while the strength is unchanged", () => {
+    const face: UnitCard = { ...unit("f", 5), art: "/cards/x.webp", officialFace: true };
+    render(<App initial={state([face])} aiDelayMs={10_000_000} />);
+    expect(hand("f").querySelector("img.face-img")?.getAttribute("src")).toBe("/cards/x.webp");
+    expect(hand("f").querySelector(".power")).toBeNull();
+    expect(hand("f").querySelector(".badges")).toBeNull();
+  });
+
+  it("add a strength badge on the board only when weather or an ability changed it", () => {
+    const face: UnitCard = { ...unit("f", 5), art: "/cards/x.webp", officialFace: true };
+    const s = state([unit("a", 3)], { board: [face, { ...face, id: "g" }] });
+    s.game.players[HUMAN].board.close.weather = true;
+    render(<App initial={s} aiDelayMs={10_000_000} />);
+    expect(screen.getByTestId("board-f").querySelector(".power")?.textContent).toBe("1");
+    expect(screen.getByTestId("board-f").querySelector(".power.reduced")).toBeTruthy();
+  });
+
+  it("the preview shows the full face and the card's name", async () => {
+    const user = userEvent.setup();
+    const face: UnitCard = { ...unit("f", 5), name: "Test Hero", art: "/cards/x.webp", officialFace: true };
+    render(<App initial={state([face])} aiDelayMs={10_000_000} />);
+    await user.hover(hand("f"));
+    const preview = screen.getByTestId("preview");
+    expect(within(preview).getByText("Test Hero")).toBeTruthy();
+    expect(preview.querySelector(".preview-face img")?.getAttribute("src")).toBe("/cards/x.webp");
+  });
+});
+
 describe("the board", () => {
   it("shows ten cards in hand, six rows, and starts on your turn", () => {
     render(<App seed={1} initial={state(Array.from({ length: 10 }, (_, i) => unit(`h${i}`, 3)))} aiDelayMs={0} />);
@@ -154,11 +245,11 @@ describe("sidebar", () => {
   it("the leader button uses the leader once", async () => {
     const user = userEvent.setup();
     render(<App initial={state([unit("a", 4)])} aiDelayMs={10_000_000} />);
-    const leader = screen.getByRole("button", { name: /Leader: Marshal of the Vale \(Ready\)/ });
+    const leader = screen.getByRole("button", { name: /Leader: Foltest: The Siegemaster \(Ready\)/ });
     await user.click(leader);
-    expect(screen.getByText("You used Marshal of the Vale")).toBeTruthy();
+    expect(screen.getByText("You used Foltest: The Siegemaster")).toBeTruthy();
     expect(within(row(0, "siege")).getByText("Horn")).toBeTruthy();
-    expect(screen.getByText(/Marshal of the Vale \(Used\)/)).toBeTruthy();
+    expect(screen.getByText(/Foltest: The Siegemaster \(Used\)/)).toBeTruthy();
   });
 
   it("the graveyard viewer lists the cards and closes", async () => {

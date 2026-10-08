@@ -19,7 +19,8 @@ npm install
 npm run dev
 ```
 
-Open the page, click a card in your hand, then click **Play** (or click the
+Pick a faction and leader on the first screen (your opponent plays a random other
+faction), then click a card in your hand, then click **Play** (or click the
 card again). Cards that need a choice highlight where they can go: a horn or an
 agile unit asks for a row on your side, a decoy asks for one of your units, and
 a medic opens a list of units to bring back. Pass when you are happy with the
@@ -30,14 +31,18 @@ Hover (or focus) any card to see it large, with its abilities explained. Add
 
 ## Cards and art
 
-The two demo decks use cards of my own invention, not cards from any game. Every
-image is a public-domain illustration (Howard Pyle, Gustave Doré, John Bauer,
-Arthur Rackham, Pieter Bruegel and others) from Wikimedia Commons, cropped and
-toned for the deck. See [ART_CREDITS.md](ART_CREDITS.md) for the work, artist and
-licence of each one. No artwork from any video game is used.
+The game uses the real *Witcher 3* card list: all five factions, their leaders,
+the neutral cards, and the special and weather cards, each with its official
+card picture. Starter decks are built from the cards the engine fully supports.
+Not yet supported: Skellige's Berserkers and Mardroeme, the Cow and Kambi's
+"avenger" ability, and 11 of the 22 leaders (the ones that need new interface
+for choosing cards).
 
-A card's artwork is just an optional `art` path, so your own images can be
-dropped into `public/art` and referenced from `src/data/demoCards.ts`.
+Every card name, picture and trademark belongs to CD PROJEKT RED. This is an
+unofficial fan project and is not affiliated with or endorsed by them; see
+[ART_CREDITS.md](ART_CREDITS.md). `src/data/demoCards.ts` also holds a second,
+fully original deck pair with public-domain art, in case a build needs to avoid
+the official pictures.
 
 ## Plan
 
@@ -51,7 +56,7 @@ dropped into `public/art` and referenced from `src/data/demoCards.ts`.
 ```
 src/engine   rules: state, actions, scoring, decks (no UI)
 src/ai       the opponent, which only ever picks from the engine's legal actions
-src/data     the demo decks
+src/data     the card catalogue, starter decks, and the original demo decks
 src/ui       the React board
 ```
 
@@ -69,4 +74,4 @@ npm run build
 
 This is an unofficial fan project and is not affiliated with or endorsed by
 CD PROJEKT RED. Gwent and The Witcher are trademarks of CD PROJEKT S.A. The
-engine implements the game's rules.
+engine implements the game's rules and the cards follow the original game.

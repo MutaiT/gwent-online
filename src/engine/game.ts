@@ -202,6 +202,16 @@ function randomInt(state: GameState, n: number): number {
   return Math.floor(step.value * n);
 }
 
+/** Shuffles in place with the game's own generator, so it stays replayable. */
+function shuffleWithGame<T>(state: GameState, items: T[]): void {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = randomInt(state, i + 1);
+    const held = items[i] as T;
+    items[i] = items[j] as T;
+    items[j] = held;
+  }
+}
+
 /** Which player a unit belongs to: who played it, or the side it sits on if unknown. */
 function ownerOf(unit: UnitCard, side: PlayerId): PlayerId {
   return unit.owner ?? side;
@@ -356,17 +366,34 @@ function playSpecial(
   }
 }
 
-/** Uses the player's leader. Returns an error message if it cannot be used. */
-function useLeader(state: GameState, playerId: PlayerId): string | null {
+/** The first weather card of this kind in a deck, if there is one. */
+function weatherInDeck(player: PlayerState, weather: WeatherType): SpecialCard | undefined {
+  return player.deck.find(
+    (c): c is SpecialCard & { effect: "weather" } => c.kind === "special" && c.effect === "weather" && c.weather === weather,
+  );
+}
+
+/** Why the player's leader cannot be used right now, or null if it can. */
+function leaderBlocked(state: GameState, playerId: PlayerId): string | null {
   const me = state.players[playerId];
   const leader = me.leader;
   if (!leader) return "You have no leader";
   if (me.leaderUsed) return "Your leader has already been used";
-
   const effect = leader.effect;
+  if (effect.type === "horn" && me.board[effect.row].hornCard) return "That row already has a horn";
+  if (effect.type === "playWeather" && !weatherInDeck(me, effect.weather)) return "That weather card is not in your deck";
+  return null;
+}
+
+/** Uses the player's leader. Returns an error message if it cannot be used. */
+function useLeader(state: GameState, playerId: PlayerId): string | null {
+  const blocked = leaderBlocked(state, playerId);
+  if (blocked) return blocked;
+  const me = state.players[playerId];
+  const effect = (me.leader as Leader).effect;
+
   switch (effect.type) {
     case "horn":
-      if (me.board[effect.row].hornCard) return "That row already has a horn";
       me.board[effect.row].hornCard = true;
       break;
     case "weather":
@@ -374,6 +401,19 @@ function useLeader(state: GameState, playerId: PlayerId): string | null {
       break;
     case "scorchRow":
       scorchRow(state, playerId, effect.row);
+      break;
+    case "playWeather": {
+      const card = weatherInDeck(me, effect.weather) as SpecialCard & { effect: "weather" };
+      me.deck.splice(me.deck.indexOf(card), 1);
+      applyWeather(state, me, effect.weather, card);
+      break;
+    }
+    case "shuffleGraveyards":
+      for (const player of state.players) {
+        player.deck.push(...player.graveyard);
+        player.graveyard = [];
+        shuffleWithGame(state, player.deck);
+      }
       break;
   }
   me.leaderUsed = true;
@@ -487,10 +527,7 @@ export function legalActions(state: GameState): Action[] {
     }
   }
 
-  const leader = me.leader;
-  if (leader && !me.leaderUsed && !(leader.effect.type === "horn" && me.board[leader.effect.row].hornCard)) {
-    actions.push({ type: "leader", player });
-  }
+  if (leaderBlocked(state, player) === null) actions.push({ type: "leader", player });
 
   actions.push({ type: "pass", player });
   return actions;

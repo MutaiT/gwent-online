@@ -22,16 +22,13 @@ export function unitPower(row: RowState, unit: UnitCard): number {
   }
 
   // Each other morale-boost unit in the row adds 1 (a unit never boosts itself).
-  const morale = row.units.filter(
-    (u) => u !== unit && !u.isHero && u.abilities.includes("moraleBoost"),
-  ).length;
+  // Heroes are immune to effects but still give them (Kayran, for example).
+  const morale = row.units.filter((u) => u !== unit && u.abilities.includes("moraleBoost")).length;
   power += morale;
 
   // Horn doubles once, however many sources there are. A unit with the horn
   // ability does not double itself, but a horn card on the row does.
-  const hornedByOther = row.units.some(
-    (u) => u !== unit && !u.isHero && u.abilities.includes("horn"),
-  );
+  const hornedByOther = row.units.some((u) => u !== unit && u.abilities.includes("horn"));
   if (row.hornCard || hornedByOther) power *= 2;
 
   return power;

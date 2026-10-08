@@ -18,6 +18,8 @@ export interface UnitCard {
   name: string;
   /** Path or URL of the card's artwork. Leave out to show generated placeholder art. */
   art?: string;
+  /** The artwork is a full card face with strength, icons and name printed on it. */
+  officialFace?: boolean;
   /** Printed strength before any effects. */
   basePower: number;
   /** The row this card is played to. */
@@ -61,6 +63,8 @@ export type SpecialCard = {
   name: string;
   /** Path or URL of the card's artwork. Leave out to show generated placeholder art. */
   art?: string;
+  /** The artwork is a full card face with its icon and name printed on it. */
+  officialFace?: boolean;
 } & (
   | { effect: "weather"; weather: WeatherType }
   | { effect: "horn" }
@@ -76,11 +80,19 @@ export type Faction = "northernRealms" | "nilfgaard" | "scoiatael" | "monsters" 
 export type LeaderEffect =
   | { type: "horn"; row: RowName }
   | { type: "weather"; weather: WeatherType }
-  | { type: "scorchRow"; row: RowName };
+  | { type: "scorchRow"; row: RowName }
+  /** Take the first weather card of this kind from your deck and play it. */
+  | { type: "playWeather"; weather: WeatherType }
+  /** Shuffle both graveyards back into their owners' decks. */
+  | { type: "shuffleGraveyards" };
 
 export interface Leader {
   id: string;
   name: string;
+  /** Artwork for the leader card. */
+  art?: string;
+  /** The artwork is a full card face with its name and icons printed on it. */
+  officialFace?: boolean;
   effect: LeaderEffect;
   /** Which faction may use this leader. Leave out for any faction. */
   faction?: Faction;
