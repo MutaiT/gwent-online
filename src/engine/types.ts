@@ -14,6 +14,8 @@ export interface UnitCard {
   name: string;
   /** Printed strength before any effects. */
   basePower: number;
+  /** The row this card is played to. */
+  row: RowName;
   /** Heroes ignore weather, horn, bond and morale. */
   isHero: boolean;
   abilities: Ability[];

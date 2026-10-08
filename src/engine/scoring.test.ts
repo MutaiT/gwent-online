@@ -12,6 +12,7 @@ function unit(
     id: `u${n}`,
     name: opts.name ?? `Unit ${n}`,
     basePower,
+    row: "close",
     isHero: opts.hero ?? false,
     abilities: opts.abilities ?? [],
     bondGroup: opts.bond,

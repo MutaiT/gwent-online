@@ -7,14 +7,17 @@ against the game and correct anything that differs before relying on it.**
 Status: `[x]` implemented and tested, `[ ]` not yet.
 
 ## Match flow
-- [ ] Two players, each with a deck, a hand of 10 cards, and a leader card
-- [ ] Coin toss decides who plays first in round 1
-- [ ] Best of three rounds; each player has two lives and loses one by losing a round
-- [ ] A drawn round costs both players a life
-- [ ] On their turn a player plays one card, or passes; once passed, a player takes no more turns in that round
-- [ ] The round ends when both players have passed; the higher total wins
-- [ ] Cards on the board go to the graveyard at the end of each round
-- [ ] Hands carry over between rounds (no redraw except through abilities)
+- [x] Two players, each with a deck and a hand of 10 cards (leader cards: not yet)
+- [x] Coin toss decides who plays first in round 1
+- [x] Best of three rounds; each player has two lives and loses one by losing a round
+- [x] A drawn round costs both players a life
+- [x] On their turn a player plays one card, or passes; once passed, a player takes no more turns in that round
+- [x] If the opponent has passed, the other player keeps taking turns
+- [x] The round ends when both players have passed; the higher total wins
+- [x] Cards on the board go to the graveyard at the end of each round
+- [x] Hands carry over between rounds (no redraw except through abilities)
+- [x] The game ends when a player has no lives left; both at zero is a draw
+- [ ] **Verify:** who starts rounds 2 and 3. The engine currently has the round winner start, and the same player start again after a draw. This is my assumption: check it against the original game.
 
 ## Board and scoring
 - [x] Each side has three rows: close combat, ranged, siege
