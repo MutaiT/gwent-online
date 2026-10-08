@@ -4,6 +4,8 @@
 
 A playable, browser-based card game based on the Witcher 3 Gwent rules.
 
+**Play it: https://gwent-online.vercel.app**
+
 **Status:** playable against a simple AI. The rules engine is
 feature-complete and tested (match flow, special cards, unit abilities,
 factions, leaders and deck validation), and there is a React board to play it
