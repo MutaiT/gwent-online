@@ -64,6 +64,20 @@ export type SpecialCard = {
 
 export type Card = UnitCard | SpecialCard;
 
+export type Faction = "northernRealms" | "nilfgaard" | "scoiatael" | "monsters" | "skellige";
+
+/** What a leader does when used. Each leader can be used once per match. */
+export type LeaderEffect =
+  | { type: "horn"; row: RowName }
+  | { type: "weather"; weather: WeatherType }
+  | { type: "scorchRow"; row: RowName };
+
+export interface Leader {
+  id: string;
+  name: string;
+  effect: LeaderEffect;
+}
+
 /** One of a player's three rows on the board. */
 export interface RowState {
   units: UnitCard[];

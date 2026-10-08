@@ -56,12 +56,18 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
   - A decoy cannot take a spy that the opponent played onto your side (currently rejected)
 
 ## Factions and leaders
-- [ ] Northern Realms: draw a card after winning a round
-- [ ] Nilfgaard: wins ties
-- [ ] Scoia'tael: chooses who goes first
-- [ ] Monsters: one random unit stays on the board after each round
-- [ ] Skellige: two random units from the graveyard come back at the start of round 3
-- [ ] Leader abilities (one use per match)
+- [x] Northern Realms: draw a card after winning a round
+- [x] Nilfgaard: wins ties (two Nilfgaard players still draw)
+- [x] Scoia'tael: if exactly one player is Scoia'tael, they choose who goes first
+- [x] Monsters: one random unit of their own stays on the board after each round
+- [x] Skellige: two random units from the graveyard come back at the start of round 3
+- [x] Leaders, once per match: horn on a row, weather (including Clear Weather), scorch a row
+- [ ] Other leader abilities (for example looking at or discarding opponent cards, drawing, passives)
+- [ ] **Verify** these against the original game:
+  - Monsters never keep a spy the opponent played onto their side
+  - Skellige's returned units are non-heroes, go to their own side, and do not trigger their abilities
+  - A scorch leader uses the same rule as a scorch unit (row total 10 or more)
+  - Whether a leader's horn takes a fixed row or lets you choose
 
 ## Deck building
 - [ ] Minimum 22 unit cards
