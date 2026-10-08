@@ -1,5 +1,7 @@
 # Gwent Online
 
+[![CI](https://github.com/MutaiT/gwent-online/actions/workflows/ci.yml/badge.svg)](https://github.com/MutaiT/gwent-online/actions/workflows/ci.yml)
+
 A playable, browser-based card game based on the Witcher 3 Gwent rules.
 
 **Status:** early. The rules engine is being built first, test-first, with no
