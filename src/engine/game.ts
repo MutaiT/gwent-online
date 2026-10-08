@@ -5,12 +5,13 @@ import {
   emptyBoard,
   type Board,
   type Card,
+  type PlayerId,
   type RowName,
   type SpecialCard,
   type UnitCard,
 } from "./types";
 
-export type PlayerId = 0 | 1;
+export type { PlayerId };
 
 const ROW_NAMES: RowName[] = ["close", "ranged", "siege"];
 
@@ -33,6 +34,12 @@ export interface RoundResult {
   winner: PlayerId | "draw";
 }
 
+/** A choice the current player must make before play continues. */
+export interface PendingChoice {
+  type: "revive";
+  player: PlayerId;
+}
+
 export interface GameState {
   players: [PlayerState, PlayerState];
   round: number;
@@ -43,6 +50,8 @@ export interface GameState {
   status: "playing" | "finished";
   /** Set once the game is finished. */
   winner: PlayerId | "draw" | null;
+  /** While set, only the matching choice may be made (a medic picking a unit to revive). */
+  pending: PendingChoice | null;
 }
 
 export type Action =
@@ -50,12 +59,14 @@ export type Action =
       type: "play";
       player: PlayerId;
       cardId: string;
-      /** The row to put a Commander's Horn on. */
+      /** The row for a Commander's Horn, or for an agile unit (close or ranged). */
       row?: RowName;
       /** The unit on your own board that a Decoy swaps back to your hand. */
       targetId?: string;
     }
-  | { type: "pass"; player: PlayerId };
+  | { type: "pass"; player: PlayerId }
+  /** Resolve a medic: choose a non-hero unit from your own graveyard. */
+  | { type: "revive"; player: PlayerId; cardId: string };
 
 export type Result = { ok: true; state: GameState } | { ok: false; error: string };
 
@@ -103,6 +114,7 @@ export function newGame({ decks, firstPlayer, rng, handSize = HAND_SIZE }: NewGa
     rounds: [],
     status: "playing",
     winner: null,
+    pending: null,
   };
 }
 
@@ -110,15 +122,83 @@ function fail(error: string): Result {
   return { ok: false, error };
 }
 
-/** Returns an error message if the card cannot be played as specified, otherwise null. */
-type Failure = string | null;
+/** Which player a unit belongs to: who played it, or the side it sits on if unknown. */
+function ownerOf(unit: UnitCard, side: PlayerId): PlayerId {
+  return unit.owner ?? side;
+}
+
+function revivable(player: PlayerState): UnitCard[] {
+  return player.graveyard.filter((c): c is UnitCard => c.kind === "unit" && !c.isHero);
+}
+
+/** Destroys the given units, sending each to its owner's graveyard. */
+function destroy(state: GameState, doomed: { side: PlayerId; row: RowName; unit: UnitCard }[]): void {
+  for (const { side, row, unit } of doomed) {
+    const board = state.players[side].board[row];
+    board.units = board.units.filter((u) => u !== unit);
+    state.players[ownerOf(unit, side)].graveyard.push(unit);
+  }
+}
+
+/**
+ * Puts a unit onto the board and runs its on-play abilities. Used for cards
+ * played from the hand and for units revived by a medic.
+ *
+ *  - spy: goes to the opponent's board, and its owner draws two cards
+ *  - muster: every card with the same muster group comes out of the deck
+ *    (placed without triggering its own abilities)
+ *  - scorch: destroys the strongest enemy unit(s) in the same row, if the
+ *    enemy's units there total 10 or more
+ *  - medic: the owner must now choose a unit to revive, if there is one
+ */
+function deployUnit(state: GameState, playerId: PlayerId, card: UnitCard, row: RowName): void {
+  const me = state.players[playerId];
+  const opponentId = other(playerId);
+  const sideId = card.abilities.includes("spy") ? opponentId : playerId;
+
+  state.players[sideId].board[row].units.push({ ...card, owner: playerId });
+
+  if (card.abilities.includes("spy")) {
+    me.hand.push(...me.deck.splice(0, 2));
+  }
+
+  if (card.abilities.includes("muster") && card.musterGroup !== undefined) {
+    const mates = me.deck.filter(
+      (c): c is UnitCard => c.kind === "unit" && c.musterGroup === card.musterGroup,
+    );
+    me.deck = me.deck.filter((c) => !mates.includes(c as UnitCard));
+    for (const mate of mates) {
+      me.board[mate.row].units.push({ ...mate, owner: playerId });
+    }
+  }
+
+  if (card.abilities.includes("scorch")) {
+    const enemyRow = state.players[opponentId].board[row];
+    const enemies = enemyRow.units.filter((u) => ownerOf(u, opponentId) === opponentId);
+    const total = enemies.reduce((sum, u) => sum + unitPower(enemyRow, u), 0);
+    if (total >= 10) {
+      const targets = enemies
+        .filter((u) => !u.isHero)
+        .map((unit) => ({ unit, power: unitPower(enemyRow, unit) }));
+      const strongest = Math.max(...targets.map((t) => t.power));
+      destroy(
+        state,
+        targets.filter((t) => t.power === strongest).map((t) => ({ side: opponentId, row, unit: t.unit })),
+      );
+    }
+  }
+
+  if (card.abilities.includes("medic") && revivable(me).length > 0) {
+    state.pending = { type: "revive", player: playerId };
+  }
+}
 
 function playSpecial(
   state: GameState,
   playerId: PlayerId,
   card: SpecialCard,
   action: Extract<Action, { type: "play" }>,
-): Failure {
+): string | null {
   const me = state.players[playerId];
 
   switch (card.effect) {
@@ -154,6 +234,8 @@ function playSpecial(
         const index = units.findIndex((u) => u.id === action.targetId);
         if (index === -1) continue;
         const target = units[index] as UnitCard;
+        // A spy on your side belongs to your opponent: you cannot take it.
+        if (ownerOf(target, playerId) !== playerId) return "That unit is not on your board";
         if (target.isHero) return "A hero cannot be swapped";
         units.splice(index, 1);
         me.hand.push(target);
@@ -164,24 +246,29 @@ function playSpecial(
     }
 
     case "scorch": {
-      const candidates = state.players.flatMap((player, owner) =>
-        ROW_NAMES.flatMap((name) =>
-          player.board[name].units
+      const candidates = state.players.flatMap((player, side) =>
+        ROW_NAMES.flatMap((row) =>
+          player.board[row].units
             .filter((unit) => !unit.isHero)
-            .map((unit) => ({ owner, name, unit, power: unitPower(player.board[name], unit) })),
+            .map((unit) => ({ side: side as PlayerId, row, unit, power: unitPower(player.board[row], unit) })),
         ),
       );
       const strongest = Math.max(...candidates.map((c) => c.power));
-      const doomed = candidates.filter((c) => c.power === strongest);
-      for (const { owner, name, unit } of doomed) {
-        const player = state.players[owner as PlayerId];
-        player.board[name].units = player.board[name].units.filter((u) => u !== unit);
-        player.graveyard.push(unit);
-      }
+      destroy(state, candidates.filter((c) => c.power === strongest));
       me.graveyard.push(card);
       return null;
     }
   }
+}
+
+/** Ends the turn: finish the round if both have passed, otherwise hand over play. */
+function finishTurn(state: GameState, playerId: PlayerId): GameState {
+  const me = state.players[playerId];
+  const opponent = state.players[other(playerId)];
+  if (me.passed && opponent.passed) return endRound(state);
+  // Play alternates, unless the opponent has passed: then this player keeps going.
+  state.current = opponent.passed ? playerId : other(playerId);
+  return state;
 }
 
 /**
@@ -191,20 +278,34 @@ function playSpecial(
 export function applyAction(state: GameState, action: Action): Result {
   if (state.status === "finished") return fail("The game is over");
   if (action.player !== state.current) return fail("It is not your turn");
+  if (state.pending && action.type !== "revive") return fail("Choose a unit to revive first");
 
   const next = structuredClone(state);
   const me = next.players[action.player];
-  const opponent = next.players[other(action.player)];
+
+  if (action.type === "revive") {
+    if (!next.pending) return fail("There is nothing to revive");
+    const target = revivable(me).find((c) => c.id === action.cardId);
+    if (!target) return fail("Choose a non-hero unit from your graveyard");
+    me.graveyard.splice(me.graveyard.indexOf(target), 1);
+    next.pending = null;
+    deployUnit(next, action.player, target, target.row);
+    return { ok: true, state: next.pending ? next : finishTurn(next, action.player) };
+  }
 
   if (action.type === "play") {
     const index = me.hand.findIndex((card) => card.id === action.cardId);
     const card = index === -1 ? undefined : me.hand[index];
     if (!card) return fail("That card is not in your hand");
-    me.hand.splice(index, 1);
 
     if (card.kind === "unit") {
-      me.board[card.row].units.push(card);
+      const row = action.row ?? card.row;
+      const allowed: RowName[] = card.abilities.includes("agile") ? ["close", "ranged"] : [card.row];
+      if (!allowed.includes(row)) return fail(`That card cannot be played to the ${row} row`);
+      me.hand.splice(index, 1);
+      deployUnit(next, action.player, card, row);
     } else {
+      me.hand.splice(index, 1);
       const error = playSpecial(next, action.player, card, action);
       if (error) return fail(error);
     }
@@ -212,13 +313,7 @@ export function applyAction(state: GameState, action: Action): Result {
     me.passed = true;
   }
 
-  if (me.passed && opponent.passed) {
-    return { ok: true, state: endRound(next) };
-  }
-
-  // Play alternates, unless the opponent has passed: then this player keeps going.
-  next.current = opponent.passed ? action.player : other(action.player);
-  return { ok: true, state: next };
+  return { ok: true, state: next.pending ? next : finishTurn(next, action.player) };
 }
 
 /** Every action the current player may take. Used by the AI and the UI. */
@@ -226,11 +321,20 @@ export function legalActions(state: GameState): Action[] {
   if (state.status === "finished") return [];
   const player = state.current;
   const me = state.players[player];
-  const actions: Action[] = [];
 
+  if (state.pending) {
+    return revivable(me).map((card): Action => ({ type: "revive", player, cardId: card.id }));
+  }
+
+  const actions: Action[] = [];
   for (const card of me.hand) {
     if (card.kind === "unit") {
-      actions.push({ type: "play", player, cardId: card.id });
+      if (card.abilities.includes("agile")) {
+        actions.push({ type: "play", player, cardId: card.id, row: "close" });
+        actions.push({ type: "play", player, cardId: card.id, row: "ranged" });
+      } else {
+        actions.push({ type: "play", player, cardId: card.id });
+      }
     } else if (card.effect === "horn") {
       for (const row of ROW_NAMES) {
         if (!me.board[row].hornCard) actions.push({ type: "play", player, cardId: card.id, row });
@@ -238,7 +342,9 @@ export function legalActions(state: GameState): Action[] {
     } else if (card.effect === "decoy") {
       for (const row of ROW_NAMES) {
         for (const unit of me.board[row].units) {
-          if (!unit.isHero) actions.push({ type: "play", player, cardId: card.id, targetId: unit.id });
+          if (!unit.isHero && ownerOf(unit, player) === player) {
+            actions.push({ type: "play", player, cardId: card.id, targetId: unit.id });
+          }
         }
       }
     } else {
@@ -269,10 +375,15 @@ function endRound(state: GameState): GameState {
   if (winner !== 1) b.lives -= 1;
   if (winner !== 0) a.lives -= 1;
 
-  for (const player of state.players) {
+  // Units go back to the graveyard of whoever played them (spies cross over).
+  state.players.forEach((player, side) => {
     for (const row of ROW_NAMES) {
-      player.graveyard.push(...player.board[row].units);
+      for (const unit of player.board[row].units) {
+        state.players[ownerOf(unit, side as PlayerId)].graveyard.push(unit);
+      }
     }
+  });
+  for (const player of state.players) {
     player.graveyard.push(...player.inPlay);
     player.inPlay = [];
     player.board = emptyBoard();

@@ -1,5 +1,7 @@
 export type RowName = "close" | "ranged" | "siege";
 
+export type PlayerId = 0 | 1;
+
 export type Ability =
   | "tightBond"
   | "moraleBoost"
@@ -7,7 +9,8 @@ export type Ability =
   | "spy"
   | "medic"
   | "muster"
-  | "scorch";
+  | "scorch"
+  | "agile";
 
 export interface UnitCard {
   kind: "unit";
@@ -22,6 +25,13 @@ export interface UnitCard {
   abilities: Ability[];
   /** Units that share a bond group multiply each other under tight bond. */
   bondGroup?: string;
+  /** Muster pulls every card with the same group out of the deck. */
+  musterGroup?: string;
+  /**
+   * Who played this card. Set when it is played; matters for spies, which sit
+   * on the opponent's board but belong to (and return to) the player who played them.
+   */
+  owner?: PlayerId;
 }
 
 export type WeatherType =
