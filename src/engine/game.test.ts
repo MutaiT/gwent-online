@@ -13,7 +13,7 @@ import { seededRng, shuffle } from "./rng";
 import type { RowName, UnitCard } from "./types";
 
 function card(id: string, basePower: number, row: RowName = "close"): UnitCard {
-  return { id, name: id, basePower, row, isHero: false, abilities: [] };
+  return { kind: "unit", id, name: id, basePower, row, isHero: false, abilities: [] };
 }
 
 /** 14 cards per player; ids are prefixed by owner so they never collide. */
@@ -84,7 +84,7 @@ describe("new game", () => {
 describe("playing cards", () => {
   it("moves the card from hand to its row and passes the turn", () => {
     const g = start(0);
-    const played = g.players[0].hand[0]!;
+    const played = g.players[0].hand[0] as UnitCard;
     const next = play(g, 0);
     expect(next.players[0].hand).toHaveLength(9);
     expect(next.players[0].board[played.row].units.map((c) => c.id)).toContain(played.id);
@@ -273,7 +273,7 @@ describe("random play", () => {
   function totalCards(state: GameState, player: PlayerId): number {
     const p = state.players[player];
     const onBoard = (["close", "ranged", "siege"] as const).reduce((n, row) => n + p.board[row].units.length, 0);
-    return p.hand.length + p.deck.length + p.graveyard.length + onBoard;
+    return p.hand.length + p.deck.length + p.graveyard.length + p.inPlay.length + onBoard;
   }
 
   it("always finishes, never loses or duplicates a card, and has a valid winner", () => {

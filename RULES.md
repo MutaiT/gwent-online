@@ -33,9 +33,11 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
   - Torrential Rain: siege
   - Skellige Storm: ranged and siege
   - Clear Weather: removes all weather
-- [x] Commander's Horn doubles the units in one row (does not stack)
-- [ ] Decoy: swap with a unit on your board, returning it to your hand
-- [ ] Scorch: destroy the strongest non-hero unit(s) on the board
+- [x] Weather lasts until Clear Weather or the end of the round
+- [x] Commander's Horn doubles the units in one row (does not stack); one horn per row
+- [x] Decoy: swap with a non-hero unit on your board, returning it to your hand
+- [x] Scorch: destroy the strongest non-hero unit(s), both sides, ties included, judged by current strength
+- [ ] **Verify:** Decoy currently returns the unit to hand and the Decoy card is kept aside until the round ends. In the original, the Decoy takes the unit's place on its row. Scoring is the same either way.
 
 ## Unit abilities
 - [x] Tight bond: same-group units in a row multiply each other

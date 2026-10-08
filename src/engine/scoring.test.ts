@@ -9,6 +9,7 @@ function unit(
 ): UnitCard {
   n += 1;
   return {
+    kind: "unit",
     id: `u${n}`,
     name: opts.name ?? `Unit ${n}`,
     basePower,
