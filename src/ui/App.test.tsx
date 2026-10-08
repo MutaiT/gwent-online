@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Ability, Card, RowName, SpecialCard, UnitCard } from "../engine/types";
@@ -227,6 +227,52 @@ describe("the table", () => {
     expect(within(row(0, "ranged")).getByLabelText("Ranged total")).toBeTruthy();
     expect(within(row(0, "ranged")).getByText("Horn")).toBeTruthy();
     expect(within(row(0, "close")).queryByText("Horn")).toBeNull();
+  });
+});
+
+describe("the card preview", () => {
+  it("shows a large card with its abilities while you hover a card, and hides it afterwards", async () => {
+    const user = userEvent.setup();
+    render(<App initial={state([unit("sp", 5, "ranged", ["spy", "agile"]), unit("b", 3)])} aiDelayMs={10_000_000} />);
+    expect(screen.queryByTestId("preview")).toBeNull();
+    await user.hover(hand("sp"));
+    const preview = screen.getByTestId("preview");
+    expect(within(preview).getByText("Unit sp")).toBeTruthy();
+    expect(within(preview).getByText(/Ranged · base strength 5/)).toBeTruthy();
+    expect(within(preview).getByText(/Spy: played on the opponent's side/)).toBeTruthy();
+    expect(within(preview).getByText(/Agile: can be played to close combat or ranged/)).toBeTruthy();
+    await user.unhover(hand("sp"));
+    expect(screen.queryByTestId("preview")).toBeNull();
+  });
+
+  it("also appears when a card is focused with the keyboard", () => {
+    render(<App initial={state([unit("a", 4)])} aiDelayMs={10_000_000} />);
+    act(() => hand("a").focus());
+    expect(screen.getByTestId("preview")).toBeTruthy();
+    act(() => hand("a").blur());
+    expect(screen.queryByTestId("preview")).toBeNull();
+  });
+
+  it("explains hero immunity and special cards", async () => {
+    const user = userEvent.setup();
+    const hero: UnitCard = { ...unit("h", 10), isHero: true };
+    render(<App initial={state([hero, horn])} aiDelayMs={10_000_000} />);
+    await user.hover(hand("h"));
+    expect(within(screen.getByTestId("preview")).getByText(/not affected by weather, horn, bond/)).toBeTruthy();
+    await user.unhover(hand("h"));
+    await user.hover(hand("horn"));
+    expect(within(screen.getByTestId("preview")).getByText(/Commander's horn: doubles the strength/)).toBeTruthy();
+  });
+
+  it("shows a board card's current strength when weather has changed it", async () => {
+    const user = userEvent.setup();
+    const s = state([unit("a", 4)], { board: [unit("on", 9)] });
+    s.game.players[HUMAN].board.close.weather = true;
+    render(<App initial={s} aiDelayMs={10_000_000} />);
+    await user.hover(screen.getByTestId("board-on"));
+    const preview = screen.getByTestId("preview");
+    expect(within(preview).getByText(/base strength 9/)).toBeTruthy();
+    expect(within(preview).getByText("Now 1")).toBeTruthy();
   });
 });
 

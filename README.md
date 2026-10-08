@@ -25,8 +25,19 @@ agile unit asks for a row on your side, a decoy asks for one of your units, and
 a medic opens a list of units to bring back. Pass when you are happy with the
 round, and use your leader once per match.
 
-The two demo decks use placeholder cards of my own, not cards from any game.
-Add `?seed=123` to the address to replay the same shuffle.
+Hover (or focus) any card to see it large, with its abilities explained. Add
+`?seed=123` to the address to replay the same shuffle.
+
+## Cards and art
+
+The two demo decks use cards of my own invention, not cards from any game. Every
+image is a public-domain illustration (Howard Pyle, Gustave Doré, John Bauer,
+Arthur Rackham, Pieter Bruegel and others) from Wikimedia Commons, cropped and
+toned for the deck. See [ART_CREDITS.md](ART_CREDITS.md) for the work, artist and
+licence of each one. No artwork from any video game is used.
+
+A card's artwork is just an optional `art` path, so your own images can be
+dropped into `public/art` and referenced from `src/data/demoCards.ts`.
 
 ## Plan
 

@@ -1,28 +1,8 @@
-import type { Card, SpecialCard, UnitCard, WeatherType } from "../engine/types";
+import type { Card, SpecialCard, UnitCard } from "../engine/types";
 import { ABILITY_BADGE, CardArt, RowIcon } from "./art";
-
-const WEATHER: Record<WeatherType, string> = {
-  bitingFrost: "Frost: close combat units drop to 1.",
-  impenetrableFog: "Fog: ranged units drop to 1.",
-  torrentialRain: "Rain: siege units drop to 1.",
-  skelligeStorm: "Storm: ranged and siege units drop to 1.",
-  clearWeather: "Clear weather: removes all weather.",
-};
+import { usePreview } from "./preview";
 
 export const ROW_LABEL = { close: "Close combat", ranged: "Ranged", siege: "Siege" } as const;
-
-function specialHelp(card: SpecialCard): string {
-  switch (card.effect) {
-    case "weather":
-      return WEATHER[card.weather];
-    case "horn":
-      return "Commander's horn: doubles one of your rows.";
-    case "decoy":
-      return "Decoy: take one of your units back to your hand.";
-    case "scorch":
-      return "Scorch: destroys the strongest non-hero unit(s) on the whole board.";
-  }
-}
 
 function specialKind(card: SpecialCard): string {
   return card.effect === "weather" ? "Weather" : card.effect[0]!.toUpperCase() + card.effect.slice(1);
@@ -45,9 +25,11 @@ interface CardViewProps {
 }
 
 export function CardView({ card, power, size = "board", selected, dimmed, target, onClick, testId }: CardViewProps) {
+  const preview = usePreview();
   const unit: UnitCard | null = card.kind === "unit" ? card : null;
   const shown = unit ? (power ?? unit.basePower) : null;
-  const change = unit && shown !== null ? (shown > unit.basePower ? "boosted" : shown < unit.basePower ? "reduced" : "") : "";
+  const change =
+    unit && shown !== null ? (shown > unit.basePower ? "boosted" : shown < unit.basePower ? "reduced" : "") : "";
 
   const classes = [
     "card",
@@ -61,9 +43,6 @@ export function CardView({ card, power, size = "board", selected, dimmed, target
     .filter(Boolean)
     .join(" ");
 
-  const help = unit
-    ? [card.name, ...unit.abilities.map((a) => ABILITY_BADGE[a].help)].join(". ")
-    : `${card.name}. ${specialHelp(card as SpecialCard)}`;
   const label = unit
     ? `${card.name}, strength ${shown}${unit.isHero ? ", hero" : ""}, ${ROW_LABEL[unit.row]}`
     : `${card.name}, ${specialKind(card as SpecialCard)} card`;
@@ -84,7 +63,12 @@ export function CardView({ card, power, size = "board", selected, dimmed, target
         <>
           <span className="badges" aria-hidden="true">
             {unit.abilities.map((a) => (
-              <span key={a} className="badge" style={{ background: ABILITY_BADGE[a].color }} title={ABILITY_BADGE[a].label}>
+              <span
+                key={a}
+                className="badge"
+                style={{ background: ABILITY_BADGE[a].color }}
+                title={ABILITY_BADGE[a].label}
+              >
                 {ABILITY_BADGE[a].code}
               </span>
             ))}
@@ -96,9 +80,16 @@ export function CardView({ card, power, size = "board", selected, dimmed, target
     </>
   );
 
+  const hover = {
+    onMouseEnter: () => preview.show({ card, power }),
+    onMouseLeave: preview.hide,
+    onFocus: () => preview.show({ card, power }),
+    onBlur: preview.hide,
+  };
+
   if (!onClick) {
     return (
-      <div className={classes} title={help} aria-label={label} data-testid={testId} role="group">
+      <div className={classes} aria-label={label} data-testid={testId} role="group" {...hover}>
         {body}
       </div>
     );
@@ -107,11 +98,11 @@ export function CardView({ card, power, size = "board", selected, dimmed, target
     <button
       type="button"
       className={classes}
-      title={help}
       aria-label={label}
       aria-pressed={selected ?? false}
       onClick={onClick}
       data-testid={testId}
+      {...hover}
     >
       {body}
     </button>

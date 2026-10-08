@@ -15,14 +15,21 @@ interface UnitSpec {
   abilities?: Ability[];
   bond?: string;
   muster?: string;
+  /** File name (without extension) of the artwork in public/art. */
+  art: string;
 }
 
-function build(prefix: string, specs: UnitSpec[], specials: [string, SpecialCard["effect"], WeatherType?][]): Card[] {
+type SpecialSpec = [name: string, effect: SpecialCard["effect"], art: string, weather?: WeatherType];
+
+const artPath = (slug: string): string => `/art/${slug}.webp`;
+
+function build(prefix: string, specs: UnitSpec[], specials: SpecialSpec[]): Card[] {
   const units = specs.map(
     (spec, i): UnitCard => ({
       kind: "unit",
       id: `${prefix}u${i}`,
       name: spec.name,
+      art: artPath(spec.art),
       basePower: spec.power,
       row: spec.row,
       isHero: spec.hero ?? false,
@@ -31,73 +38,73 @@ function build(prefix: string, specs: UnitSpec[], specials: [string, SpecialCard
       musterGroup: spec.muster,
     }),
   );
-  const cards = specials.map(([name, effect, weather], i): SpecialCard => {
-    const base = { kind: "special" as const, id: `${prefix}s${i}`, name };
+  const cards = specials.map(([name, effect, art, weather], i): SpecialCard => {
+    const base = { kind: "special" as const, id: `${prefix}s${i}`, name, art: artPath(art) };
     return effect === "weather" ? { ...base, effect, weather: weather as WeatherType } : { ...base, effect };
   });
   return [...units, ...cards];
 }
 
 const valeUnits: UnitSpec[] = [
-  { name: "Warden Captain Isolde", power: 10, row: "close", hero: true },
-  { name: "Sage Orwen", power: 7, row: "ranged", hero: true },
-  { name: "Vale Pikeman", power: 4, row: "close", abilities: ["tightBond"], bond: "pike" },
-  { name: "Vale Pikeman", power: 4, row: "close", abilities: ["tightBond"], bond: "pike" },
-  { name: "Vale Pikeman", power: 4, row: "close", abilities: ["tightBond"], bond: "pike" },
-  { name: "Crossbow Scout", power: 3, row: "ranged", abilities: ["tightBond"], bond: "bow" },
-  { name: "Crossbow Scout", power: 3, row: "ranged", abilities: ["tightBond"], bond: "bow" },
-  { name: "Crossbow Scout", power: 3, row: "ranged", abilities: ["tightBond"], bond: "bow" },
-  { name: "Field Medic Brannoch", power: 3, row: "close", abilities: ["medic"] },
-  { name: "Field Medic Aoife", power: 3, row: "ranged", abilities: ["medic"] },
-  { name: "Informant Kell", power: 5, row: "close", abilities: ["spy"] },
-  { name: "Informant Wren", power: 4, row: "ranged", abilities: ["spy"] },
-  { name: "Banner Squire", power: 2, row: "close", abilities: ["muster"], muster: "squire" },
-  { name: "Banner Squire", power: 2, row: "close", abilities: ["muster"], muster: "squire" },
-  { name: "Banner Squire", power: 2, row: "close", abilities: ["muster"], muster: "squire" },
-  { name: "Drummer Tobin", power: 2, row: "siege", abilities: ["horn"] },
-  { name: "Standard Bearer Lysa", power: 1, row: "close", abilities: ["moraleBoost"] },
-  { name: "Skirmisher Dara", power: 5, row: "close", abilities: ["agile"] },
-  { name: "Siege Engineer Holt", power: 6, row: "siege" },
-  { name: "Catapult Crew", power: 5, row: "siege" },
-  { name: "Pyromancer Veyra", power: 7, row: "close", abilities: ["scorch"] },
-  { name: "Pikeman Elder", power: 6, row: "close" },
-  { name: "Ranger Corin", power: 6, row: "ranged" },
-  { name: "Bolt Thrower", power: 4, row: "siege" },
+  { name: "Warden Captain Gawen", power: 10, row: "close", hero: true, art: "warden-captain" },
+  { name: "Sage Orwen", power: 7, row: "ranged", hero: true, art: "sage-orwen" },
+  { name: "Vale Pikeman", power: 4, row: "close", abilities: ["tightBond"], bond: "pike", art: "vale-pikeman" },
+  { name: "Vale Pikeman", power: 4, row: "close", abilities: ["tightBond"], bond: "pike", art: "vale-pikeman" },
+  { name: "Vale Pikeman", power: 4, row: "close", abilities: ["tightBond"], bond: "pike", art: "vale-pikeman" },
+  { name: "Longbow Scout", power: 3, row: "ranged", abilities: ["tightBond"], bond: "bow", art: "longbow-scout" },
+  { name: "Longbow Scout", power: 3, row: "ranged", abilities: ["tightBond"], bond: "bow", art: "longbow-scout" },
+  { name: "Longbow Scout", power: 3, row: "ranged", abilities: ["tightBond"], bond: "bow", art: "longbow-scout" },
+  { name: "Field Medic Brannoch", power: 3, row: "close", abilities: ["medic"], art: "medic-brannoch" },
+  { name: "Field Medic Aoife", power: 3, row: "ranged", abilities: ["medic"], art: "medic-aoife" },
+  { name: "Informant Kell", power: 5, row: "close", abilities: ["spy"], art: "informant-kell" },
+  { name: "Informant Wren", power: 4, row: "ranged", abilities: ["spy"], art: "informant-wren" },
+  { name: "Banner Squire", power: 2, row: "close", abilities: ["muster"], muster: "squire", art: "banner-squire" },
+  { name: "Banner Squire", power: 2, row: "close", abilities: ["muster"], muster: "squire", art: "banner-squire" },
+  { name: "Banner Squire", power: 2, row: "close", abilities: ["muster"], muster: "squire", art: "banner-squire" },
+  { name: "Drummer Tobin", power: 2, row: "siege", abilities: ["horn"], art: "drummer-tobin" },
+  { name: "Standard Bearer Lysa", power: 1, row: "close", abilities: ["moraleBoost"], art: "standard-bearer" },
+  { name: "Skirmisher Dara", power: 5, row: "close", abilities: ["agile"], art: "skirmisher-dara" },
+  { name: "Siege Engineer Holt", power: 6, row: "siege", art: "siege-engineer" },
+  { name: "Ballista Crew", power: 5, row: "siege", art: "ballista-crew" },
+  { name: "Pyromancer Veyra", power: 7, row: "close", abilities: ["scorch"], art: "pyromancer" },
+  { name: "Pikeman Elder", power: 6, row: "close", art: "pikeman-elder" },
+  { name: "Ranger Corin", power: 6, row: "ranged", art: "ranger-corin" },
+  { name: "Bolt Thrower", power: 4, row: "siege", art: "bolt-thrower" },
 ];
 
 const hollowUnits: UnitSpec[] = [
-  { name: "Elder Wyrm", power: 10, row: "close", hero: true },
-  { name: "Mire Witch Sorrel", power: 7, row: "ranged", hero: true },
-  { name: "Bog Hound", power: 4, row: "close", abilities: ["tightBond"], bond: "hound" },
-  { name: "Bog Hound", power: 4, row: "close", abilities: ["tightBond"], bond: "hound" },
-  { name: "Bog Hound", power: 4, row: "close", abilities: ["tightBond"], bond: "hound" },
-  { name: "Spitter", power: 3, row: "ranged", abilities: ["tightBond"], bond: "spit" },
-  { name: "Spitter", power: 3, row: "ranged", abilities: ["tightBond"], bond: "spit" },
-  { name: "Spitter", power: 3, row: "ranged", abilities: ["tightBond"], bond: "spit" },
-  { name: "Grave Tender", power: 3, row: "close", abilities: ["medic"] },
-  { name: "Carrion Priest", power: 3, row: "ranged", abilities: ["medic"] },
-  { name: "Whisperer", power: 5, row: "close", abilities: ["spy"] },
-  { name: "Shade Courier", power: 4, row: "ranged", abilities: ["spy"] },
-  { name: "Ghoul Pup", power: 2, row: "close", abilities: ["muster"], muster: "ghoul" },
-  { name: "Ghoul Pup", power: 2, row: "close", abilities: ["muster"], muster: "ghoul" },
-  { name: "Ghoul Pup", power: 2, row: "close", abilities: ["muster"], muster: "ghoul" },
-  { name: "Howler", power: 2, row: "siege", abilities: ["horn"] },
-  { name: "Frenzy Imp", power: 1, row: "close", abilities: ["moraleBoost"] },
-  { name: "Marsh Stalker", power: 5, row: "close", abilities: ["agile"] },
-  { name: "Rockhide Giant", power: 6, row: "siege" },
-  { name: "Boulder Thrower", power: 5, row: "siege" },
-  { name: "Ember Drake", power: 7, row: "close", abilities: ["scorch"] },
-  { name: "Cave Brute", power: 6, row: "close" },
-  { name: "Thorn Archer", power: 6, row: "ranged" },
-  { name: "Hollow Catapult", power: 4, row: "siege" },
+  { name: "Elder Wyrm", power: 10, row: "close", hero: true, art: "elder-wyrm" },
+  { name: "Mire Witch Sorrel", power: 7, row: "ranged", hero: true, art: "mire-witch" },
+  { name: "Bog Wolf", power: 4, row: "close", abilities: ["tightBond"], bond: "hound", art: "bog-wolf" },
+  { name: "Bog Wolf", power: 4, row: "close", abilities: ["tightBond"], bond: "hound", art: "bog-wolf" },
+  { name: "Bog Wolf", power: 4, row: "close", abilities: ["tightBond"], bond: "hound", art: "bog-wolf" },
+  { name: "Spitter", power: 3, row: "ranged", abilities: ["tightBond"], bond: "spit", art: "spitter" },
+  { name: "Spitter", power: 3, row: "ranged", abilities: ["tightBond"], bond: "spit", art: "spitter" },
+  { name: "Spitter", power: 3, row: "ranged", abilities: ["tightBond"], bond: "spit", art: "spitter" },
+  { name: "Grave Tender", power: 3, row: "close", abilities: ["medic"], art: "grave-tender" },
+  { name: "Carrion Priest", power: 3, row: "ranged", abilities: ["medic"], art: "carrion-priest" },
+  { name: "Whisperer", power: 5, row: "close", abilities: ["spy"], art: "whisperer" },
+  { name: "Shade Courier", power: 4, row: "ranged", abilities: ["spy"], art: "shade-courier" },
+  { name: "Ghoul Pup", power: 2, row: "close", abilities: ["muster"], muster: "ghoul", art: "ghoul-pup" },
+  { name: "Ghoul Pup", power: 2, row: "close", abilities: ["muster"], muster: "ghoul", art: "ghoul-pup" },
+  { name: "Ghoul Pup", power: 2, row: "close", abilities: ["muster"], muster: "ghoul", art: "ghoul-pup" },
+  { name: "Howler", power: 2, row: "siege", abilities: ["horn"], art: "howler" },
+  { name: "Frenzy Imp", power: 1, row: "close", abilities: ["moraleBoost"], art: "frenzy-imp" },
+  { name: "Marsh Stalker", power: 5, row: "close", abilities: ["agile"], art: "marsh-stalker" },
+  { name: "Rockhide Giant", power: 6, row: "siege", art: "rockhide-giant" },
+  { name: "Boulder Thrower", power: 5, row: "siege", art: "boulder-thrower" },
+  { name: "Ember Drake", power: 7, row: "close", abilities: ["scorch"], art: "ember-drake" },
+  { name: "Cave Brute", power: 6, row: "close", art: "cave-brute" },
+  { name: "Thorn Archer", power: 6, row: "ranged", art: "thorn-archer" },
+  { name: "Hollow Catapult", power: 4, row: "siege", art: "hollow-catapult" },
 ];
 
-const specials: [string, SpecialCard["effect"], WeatherType?][] = [
-  ["Rallying Horn", "horn"],
-  ["Switchback", "decoy"],
-  ["Scorching Strike", "scorch"],
-  ["Bitter Frost", "weather", "bitingFrost"],
-  ["Clear Skies", "weather", "clearWeather"],
+const specials: SpecialSpec[] = [
+  ["Rallying Horn", "horn", "rallying-horn"],
+  ["Switchback", "decoy", "switchback"],
+  ["Scorching Strike", "scorch", "scorching-strike"],
+  ["Bitter Frost", "weather", "bitter-frost", "bitingFrost"],
+  ["Clear Skies", "weather", "clear-skies", "clearWeather"],
 ];
 
 const valeLeader: Leader = { id: "vale-leader", name: "Marshal of the Vale", effect: { type: "horn", row: "siege" } };
