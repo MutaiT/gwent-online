@@ -133,12 +133,34 @@ describe("spy", () => {
     expect(ids(g.players[0].hand)).toContain("only");
   });
 
-  it("returns to its owner's graveyard when the round ends", () => {
+  it("goes to the opponent's graveyard when the round ends, not its owner's", () => {
     let g = play(setup([spy()]), 0, "spy");
     g = pass(g, 1);
     g = pass(g, 0);
-    expect(ids(g.players[0].graveyard)).toContain("spy");
+    expect(ids(g.players[1].graveyard)).toContain("spy");
+    expect(ids(g.players[0].graveyard)).not.toContain("spy");
+  });
+
+  it("can then be revived by the opponent's medic, going back to its first owner's board", () => {
+    const medic = unit("med", 2, "close", { abilities: ["medic"] });
+    let g = play(setup([spy()], [medic]), 0, "spy");
+    g = pass(g, 1);
+    g = pass(g, 0);
+    // Player 1 won round 1 (the spy scored for them) and starts round 2.
+    expect(g.round).toBe(2);
+    expect(g.current).toBe(1);
+    const handBefore = g.players[1].hand.length;
+
+    g = play(g, 1, "med");
+    expect(g.pending).toEqual({ type: "revive", player: 1 });
+    g = revive(g, 1, "spy");
+
+    expect(ids(g.players[0].board.close.units)).toEqual(["spy"]);
+    expect(g.players[0].board.close.units[0]!.owner).toBe(1);
+    expect(boardPower(g.players[0].board)).toBe(7);
     expect(ids(g.players[1].graveyard)).not.toContain("spy");
+    // Medic played (-1), then the revived spy's draw (+2).
+    expect(g.players[1].hand).toHaveLength(handBefore - 1 + 2);
   });
 
   it("cannot be taken with the opponent's decoy", () => {
@@ -149,12 +171,12 @@ describe("spy", () => {
     expect(legalActions(g).some((a) => a.type === "play" && a.cardId === "decoy" && "targetId" in a)).toBe(false);
   });
 
-  it("when scorched, goes to its owner's graveyard", () => {
+  it("when scorched, goes to the graveyard of the side it was on", () => {
     let g = play(setup([spy()], [special("scorch", "scorch")]), 0, "spy");
     g = play(g, 1, "scorch");
     expect(g.players[1].board.close.units).toEqual([]);
-    expect(ids(g.players[0].graveyard)).toEqual(["spy"]);
-    expect(ids(g.players[1].graveyard)).toEqual(["scorch"]);
+    expect(ids(g.players[1].graveyard).sort()).toEqual(["scorch", "spy"]);
+    expect(g.players[0].graveyard).toEqual([]);
   });
 });
 
@@ -380,21 +402,17 @@ describe("random play with every ability", () => {
     ];
   }
 
-  /** Every card a player owns, wherever it currently is. Spies on the other board still count. */
-  function owned(g: GameState, p: PlayerId): number {
-    const me = g.players[p];
-    let n = me.hand.length + me.deck.length + me.graveyard.length + me.inPlay.length;
-    g.players.forEach((player, side) => {
-      for (const row of ["close", "ranged", "siege"] as const) {
-        for (const u of player.board[row].units) {
-          if ((u.owner ?? side) === p) n += 1;
-        }
-      }
-    });
+  /** Every card in the game, wherever it is. Spies can change graveyards, so count both players together. */
+  function everyCard(g: GameState): number {
+    let n = 0;
+    for (const player of g.players) {
+      n += player.hand.length + player.deck.length + player.graveyard.length + player.inPlay.length;
+      for (const row of ["close", "ranged", "siege"] as const) n += player.board[row].units.length;
+    }
     return n;
   }
 
-  it("always accepts listed actions, conserves every player's cards, and finishes", () => {
+  it("always accepts listed actions, never loses or duplicates a card, and finishes", () => {
     for (let seed = 1; seed <= 150; seed++) {
       const rng = seededRng(seed);
       let g = newGame({ decks: [deck("a"), deck("b")], firstPlayer: coinToss(rng), rng });
@@ -403,8 +421,7 @@ describe("random play with every ability", () => {
         const actions = legalActions(g);
         expect(actions.length).toBeGreaterThan(0);
         g = act(g, actions[Math.floor(rng() * actions.length)]!);
-        expect(owned(g, 0)).toBe(24);
-        expect(owned(g, 1)).toBe(24);
+        expect(everyCard(g)).toBe(48);
         expect(++steps).toBeLessThan(400);
       }
       expect([0, 1, "draw"]).toContain(g.winner);

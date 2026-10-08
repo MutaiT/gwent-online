@@ -43,7 +43,7 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
 - [x] Tight bond: same-group units in a row multiply each other
 - [x] Morale boost: +1 to every other unit in the row
 - [x] Horn (unit): doubles the other units in its row
-- [x] Spy: placed on the opponent's board (scores for them); its owner draws 2 cards; returns to its owner's graveyard
+- [x] Spy: placed on the opponent's board (scores for them); its owner draws 2 cards; at the end of the round it goes to the opponent's graveyard, where their medic can revive it
 - [x] Medic: on play, choose a non-hero unit from your graveyard to put back on the board; a revived unit's own ability runs, so a revived medic asks again
 - [x] Muster: when played, every card with the same muster group comes out of the deck
 - [x] Agile: may be played to close combat or ranged
@@ -53,6 +53,7 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
   - Mustered cards are placed without triggering their own abilities
   - A revived agile unit goes to its printed row (no choice)
   - Unit scorch applies to the played card's own row, and only the opponent's own units count towards the total of 10
+  - A decoy cannot take a spy that the opponent played onto your side (currently rejected)
 
 ## Factions and leaders
 - [ ] Northern Realms: draw a card after winning a round

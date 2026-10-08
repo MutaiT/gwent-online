@@ -131,12 +131,12 @@ function revivable(player: PlayerState): UnitCard[] {
   return player.graveyard.filter((c): c is UnitCard => c.kind === "unit" && !c.isHero);
 }
 
-/** Destroys the given units, sending each to its owner's graveyard. */
+/** Destroys the given units. Each goes to the graveyard of the side it was on. */
 function destroy(state: GameState, doomed: { side: PlayerId; row: RowName; unit: UnitCard }[]): void {
   for (const { side, row, unit } of doomed) {
     const board = state.players[side].board[row];
     board.units = board.units.filter((u) => u !== unit);
-    state.players[ownerOf(unit, side)].graveyard.push(unit);
+    state.players[side].graveyard.push(unit);
   }
 }
 
@@ -375,15 +375,12 @@ function endRound(state: GameState): GameState {
   if (winner !== 1) b.lives -= 1;
   if (winner !== 0) a.lives -= 1;
 
-  // Units go back to the graveyard of whoever played them (spies cross over).
-  state.players.forEach((player, side) => {
-    for (const row of ROW_NAMES) {
-      for (const unit of player.board[row].units) {
-        state.players[ownerOf(unit, side as PlayerId)].graveyard.push(unit);
-      }
-    }
-  });
+  // Units go to the graveyard of the side they were on, so a spy lands in the
+  // opponent's graveyard and their medic can bring it back.
   for (const player of state.players) {
+    for (const row of ROW_NAMES) {
+      player.graveyard.push(...player.board[row].units);
+    }
     player.graveyard.push(...player.inPlay);
     player.inPlay = [];
     player.board = emptyBoard();

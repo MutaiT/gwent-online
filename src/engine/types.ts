@@ -28,8 +28,9 @@ export interface UnitCard {
   /** Muster pulls every card with the same group out of the deck. */
   musterGroup?: string;
   /**
-   * Who played this card. Set when it is played; matters for spies, which sit
-   * on the opponent's board but belong to (and return to) the player who played them.
+   * Who played this card. Set when it is played. Matters for spies, which sit on
+   * the opponent's board but were played by you: a decoy cannot take them, and
+   * unit scorch ignores them. (Graveyards follow the side a card is on, not this.)
    */
   owner?: PlayerId;
 }
