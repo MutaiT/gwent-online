@@ -70,6 +70,10 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
   - Whether a leader's horn takes a fixed row or lets you choose
 
 ## Deck building
-- [ ] Minimum 22 unit cards
-- [ ] Maximum 10 special cards
-- [ ] All cards belong to the chosen faction or are neutral
+- [x] Minimum 22 unit cards (heroes count as units)
+- [x] Maximum 10 special cards
+- [x] Units belong to the chosen faction or are neutral; special cards are neutral
+- [x] Every card has a unique id
+- [x] A leader from the chosen faction (or a neutral leader)
+- [x] `newGame({ validateDecks: true })` rejects an invalid deck with a clear message
+- [ ] **Verify:** limits on copies of the same card, and whether a faction may have only some leaders

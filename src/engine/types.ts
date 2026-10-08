@@ -23,6 +23,8 @@ export interface UnitCard {
   /** Heroes ignore weather, horn, bond and morale, and cannot be scorched or decoyed. */
   isHero: boolean;
   abilities: Ability[];
+  /** Which faction's decks may include this card. Leave out for a neutral card. */
+  faction?: Faction;
   /** Units that share a bond group multiply each other under tight bond. */
   bondGroup?: string;
   /** Muster pulls every card with the same group out of the deck. */
@@ -76,6 +78,8 @@ export interface Leader {
   id: string;
   name: string;
   effect: LeaderEffect;
+  /** Which faction may use this leader. Leave out for any faction. */
+  faction?: Faction;
 }
 
 /** One of a player's three rows on the board. */

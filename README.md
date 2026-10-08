@@ -4,8 +4,10 @@
 
 A playable, browser-based card game based on the Witcher 3 Gwent rules.
 
-**Status:** early. The rules engine is being built first, test-first, with no
-UI dependency. See [RULES.md](RULES.md) for what is implemented.
+**Status:** the rules engine is feature-complete and tested (match flow,
+special cards, unit abilities, factions, leaders and deck validation). The
+playable UI is next. See [RULES.md](RULES.md) for what is implemented and what
+still needs checking against the original game.
 
 ## Plan
 

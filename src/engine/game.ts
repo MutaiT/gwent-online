@@ -1,3 +1,4 @@
+import { describeDeckError, validateDeck } from "./deck";
 import { shuffle, stepRandom, type Rng } from "./rng";
 import { boardPower, unitPower } from "./scoring";
 import {
@@ -106,6 +107,12 @@ export interface NewGameOptions {
   handSize?: number;
   factions?: [Faction | null, Faction | null];
   leaders?: [Leader | null, Leader | null];
+  /**
+   * Check each deck against the deck-building rules and throw if one is invalid.
+   * Needs a faction for each player, and a leader unless the deck is for a casual game.
+   * Off by default so tests and experiments can use small decks.
+   */
+  validateDecks?: boolean;
 }
 
 function newPlayer(
@@ -140,7 +147,19 @@ export function newGame({
   handSize = HAND_SIZE,
   factions = [null, null],
   leaders = [null, null],
+  validateDecks = false,
 }: NewGameOptions): GameState {
+  if (validateDecks) {
+    for (const side of [0, 1] as const) {
+      const faction = factions[side];
+      if (faction === null) throw new RangeError(`Player ${side} needs a faction to validate their deck`);
+      const result = validateDeck(decks[side], faction, leaders[side]);
+      if (!result.valid) {
+        throw new RangeError(`Player ${side}'s deck is not valid: ${result.errors.map(describeDeckError).join("; ")}`);
+      }
+    }
+  }
+
   const players: [PlayerState, PlayerState] = [
     newPlayer(decks[0], handSize, rng, factions[0], leaders[0]),
     newPlayer(decks[1], handSize, rng, factions[1], leaders[1]),
