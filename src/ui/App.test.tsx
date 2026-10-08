@@ -172,6 +172,64 @@ describe("sidebar", () => {
   });
 });
 
+describe("the table", () => {
+  it("shows a Passed tag once a player has passed", () => {
+    const s = state([unit("a", 4)]);
+    s.game.players[AI].passed = true;
+    render(<App initial={s} aiDelayMs={10_000_000} />);
+    const panel = screen.getByTestId("score-opponent");
+    expect(within(panel).getByText("Passed")).toBeTruthy();
+    expect(within(screen.getByTestId("score-you")).queryByText("Passed")).toBeNull();
+  });
+
+  it("names each side's faction and counts cards in hand", () => {
+    render(<App initial={state([unit("a", 4), unit("b", 3)])} aiDelayMs={10_000_000} />);
+    expect(within(screen.getByTestId("score-you")).getByText("Northern Realms")).toBeTruthy();
+    expect(within(screen.getByTestId("score-opponent")).getByText("Monsters")).toBeTruthy();
+    expect(within(screen.getByTestId("score-you")).getByLabelText("2 cards in hand")).toBeTruthy();
+  });
+
+  it("highlights whoever has the higher total", () => {
+    const s = state([unit("a", 4)], { board: [unit("on", 9)] });
+    render(<App initial={s} aiDelayMs={10_000_000} />);
+    expect(within(screen.getByTestId("score-you")).getByLabelText("You total").className).toContain("leading");
+    expect(within(screen.getByTestId("score-opponent")).getByLabelText("Opponent total").className).not.toContain("leading");
+  });
+
+  it("the weather slot lists the rows under weather", () => {
+    const s = state([unit("a", 4)]);
+    s.game.players[AI].board.ranged.weather = true;
+    s.game.players[HUMAN].board.ranged.weather = true;
+    render(<App initial={s} aiDelayMs={10_000_000} />);
+    expect(within(screen.getByLabelText("Weather")).getByText("Fog")).toBeTruthy();
+    expect(within(screen.getByLabelText("Weather")).queryByText("Frost")).toBeNull();
+    expect(within(row(0, "ranged")).getByText("Weather")).toBeTruthy();
+  });
+
+  it("the weather slot says clear when there is none", () => {
+    render(<App initial={state([unit("a", 4)])} aiDelayMs={10_000_000} />);
+    expect(within(screen.getByLabelText("Weather")).getByText("clear")).toBeTruthy();
+  });
+
+  it("shows a card's artwork when it has some, and placeholder art otherwise", () => {
+    const withArt: UnitCard = { ...unit("pic", 5), art: "/art/pic.png" };
+    const { container } = render(<App initial={state([withArt, unit("plain", 3)])} aiDelayMs={10_000_000} />);
+    expect(hand("pic").querySelector("img.art")?.getAttribute("src")).toBe("/art/pic.png");
+    expect(hand("plain").querySelector("img.art")).toBeNull();
+    expect(hand("plain").querySelector(".art.placeholder")).toBeTruthy();
+    expect(container.querySelectorAll("img.art")).toHaveLength(1);
+  });
+
+  it("each row has a score badge and a horn slot, and the horn slot lights up with a horn", () => {
+    const s = state([unit("a", 4)]);
+    s.game.players[HUMAN].board.ranged.hornCard = true;
+    render(<App initial={s} aiDelayMs={10_000_000} />);
+    expect(within(row(0, "ranged")).getByLabelText("Ranged total")).toBeTruthy();
+    expect(within(row(0, "ranged")).getByText("Horn")).toBeTruthy();
+    expect(within(row(0, "close")).queryByText("Horn")).toBeNull();
+  });
+});
+
 describe("the end of a game", () => {
   function finished(winner: 0 | 1 | "draw"): UIState {
     const s = state([unit("a", 4)]);

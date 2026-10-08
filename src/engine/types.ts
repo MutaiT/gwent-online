@@ -16,6 +16,8 @@ export interface UnitCard {
   kind: "unit";
   id: string;
   name: string;
+  /** Path or URL of the card's artwork. Leave out to show generated placeholder art. */
+  art?: string;
   /** Printed strength before any effects. */
   basePower: number;
   /** The row this card is played to. */
@@ -57,6 +59,8 @@ export type SpecialCard = {
   kind: "special";
   id: string;
   name: string;
+  /** Path or URL of the card's artwork. Leave out to show generated placeholder art. */
+  art?: string;
 } & (
   | { effect: "weather"; weather: WeatherType }
   | { effect: "horn" }

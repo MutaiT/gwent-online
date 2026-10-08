@@ -4,7 +4,7 @@ import { boardPower } from "../engine/scoring";
 import { Board } from "./Board";
 import { CardView } from "./CardView";
 import { AI, HUMAN, choicesFor, initialState, playableIds, reducer, type UIState } from "./controller";
-import { CardList, Modal, Sidebar } from "./Panels";
+import { CardList, LogPanel, Modal, PilesColumn, PlayersColumn } from "./Panels";
 
 export interface AppProps {
   /** Seed for the shuffle. Leave out for a different game each time. */
@@ -76,6 +76,7 @@ export function App({ seed, aiDelayMs = 700, initial }: AppProps) {
     <div className="app">
       <header className="topbar">
         <h1>Gwent Online</h1>
+        <h2 className="round-title">Round {game.round} of 3</h2>
         <p className="status" role="status" data-testid="status">
           {statusText(state)}
         </p>
@@ -93,58 +94,61 @@ export function App({ seed, aiDelayMs = 700, initial }: AppProps) {
         </div>
       )}
 
-      <main className="layout">
-        <section className="table" aria-label="Game board">
+      <main className="table" aria-label="Game board">
+        <div className="table-grid">
+          <PlayersColumn game={game} canAct={canAct} onAct={act} />
           <Board game={game} choices={choices} onAct={act} />
+          <PilesColumn game={game} canAct={canAct} onAct={act} onViewGraveyard={setViewing} />
+        </div>
 
-          <div className="hand-bar">
-            <div className="mobile-actions">
-              <button type="button" className="btn small" disabled={!canAct} onClick={() => act({ type: "pass", player: HUMAN })}>
-                Pass
-              </button>
-              <button
-                type="button"
-                className="btn small"
-                disabled={!canAct || !legalActions(game).some((a) => a.type === "leader")}
-                onClick={() => act({ type: "leader", player: HUMAN })}
-              >
-                Leader
-              </button>
-              <span className="muted">
-                You {boardPower(me.board)} to {boardPower(game.players[AI].board)} opponent
-              </span>
-            </div>
-            {selectedCard && canAct && (
-              <div className="prompt" data-testid="prompt">
-                {choices.plain ? (
-                  <button type="button" className="btn primary" onClick={() => act(choices.plain as Action)}>
-                    Play {selectedCard.name}
-                  </button>
-                ) : (
-                  <span>{prompt}</span>
-                )}
-                <button type="button" className="btn small" onClick={() => dispatch({ type: "select", cardId: null })}>
-                  Cancel
-                </button>
-              </div>
-            )}
-            <div className="hand" aria-label="Your hand">
-              {me.hand.length === 0 && <span className="muted">No cards in hand. Pass to end the round.</span>}
-              {me.hand.map((card) => (
-                <CardView
-                  key={card.id}
-                  card={card}
-                  selected={state.selected === card.id}
-                  dimmed={!playable.has(card.id)}
-                  onClick={canAct && playable.has(card.id) ? () => onHandClick(card.id) : undefined}
-                  testId={`hand-${card.id}`}
-                />
-              ))}
-            </div>
+        <div className="hand-bar">
+          <div className="mobile-actions">
+            <button type="button" className="btn small" disabled={!canAct} onClick={() => act({ type: "pass", player: HUMAN })}>
+              Pass
+            </button>
+            <button
+              type="button"
+              className="btn small"
+              disabled={!canAct || !legalActions(game).some((a) => a.type === "leader")}
+              onClick={() => act({ type: "leader", player: HUMAN })}
+            >
+              Leader
+            </button>
+            <span className="muted-small">
+              You {boardPower(me.board)} to {boardPower(game.players[AI].board)} opponent
+            </span>
           </div>
-        </section>
+          {selectedCard && canAct && (
+            <div className="prompt" data-testid="prompt">
+              {choices.plain ? (
+                <button type="button" className="btn primary" onClick={() => act(choices.plain as Action)}>
+                  Play {selectedCard.name}
+                </button>
+              ) : (
+                <span>{prompt}</span>
+              )}
+              <button type="button" className="btn small" onClick={() => dispatch({ type: "select", cardId: null })}>
+                Cancel
+              </button>
+            </div>
+          )}
+          <div className="hand" aria-label="Your hand">
+            {me.hand.length === 0 && <span className="muted-small">No cards in hand. Pass to end the round.</span>}
+            {me.hand.map((card) => (
+              <CardView
+                key={card.id}
+                card={card}
+                size="hand"
+                selected={state.selected === card.id}
+                dimmed={!playable.has(card.id)}
+                onClick={canAct && playable.has(card.id) ? () => onHandClick(card.id) : undefined}
+                testId={`hand-${card.id}`}
+              />
+            ))}
+          </div>
+        </div>
 
-        <Sidebar game={game} log={state.log} canAct={canAct} onAct={act} onViewGraveyard={setViewing} />
+        <LogPanel log={state.log} />
       </main>
 
       {revivePending && (

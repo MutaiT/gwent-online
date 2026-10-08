@@ -1,15 +1,5 @@
-import type { Ability, Card, SpecialCard, UnitCard, WeatherType } from "../engine/types";
-
-const ABILITY: Record<Ability, { label: string; help: string }> = {
-  tightBond: { label: "Bond", help: "Tight bond: units with the same bond group in a row multiply each other's strength." },
-  moraleBoost: { label: "Morale", help: "Morale boost: +1 to every other unit in the row." },
-  horn: { label: "Horn", help: "Horn: doubles the other units in this row." },
-  spy: { label: "Spy", help: "Spy: played on the opponent's side; you draw two cards." },
-  medic: { label: "Medic", help: "Medic: bring back a non-hero unit from your graveyard." },
-  muster: { label: "Muster", help: "Muster: brings every card of the same group out of your deck." },
-  scorch: { label: "Scorch", help: "Scorch: destroys the strongest enemy units in the row if they total 10 or more." },
-  agile: { label: "Agile", help: "Agile: can be played to close combat or ranged." },
-};
+import type { Card, SpecialCard, UnitCard, WeatherType } from "../engine/types";
+import { ABILITY_BADGE, CardArt, RowIcon } from "./art";
 
 const WEATHER: Record<WeatherType, string> = {
   bitingFrost: "Frost: close combat units drop to 1.",
@@ -20,7 +10,6 @@ const WEATHER: Record<WeatherType, string> = {
 };
 
 export const ROW_LABEL = { close: "Close combat", ranged: "Ranged", siege: "Siege" } as const;
-const ROW_SHORT = { close: "Close", ranged: "Ranged", siege: "Siege" } as const;
 
 function specialHelp(card: SpecialCard): string {
   switch (card.effect) {
@@ -39,10 +28,13 @@ function specialKind(card: SpecialCard): string {
   return card.effect === "weather" ? "Weather" : card.effect[0]!.toUpperCase() + card.effect.slice(1);
 }
 
+export type CardSize = "board" | "hand" | "list";
+
 interface CardViewProps {
   card: Card;
   /** A unit's current strength after weather, bonds and so on. Defaults to its printed strength. */
   power?: number;
+  size?: CardSize;
   selected?: boolean;
   /** Dim the card when it cannot be played. */
   dimmed?: boolean;
@@ -52,16 +44,16 @@ interface CardViewProps {
   testId?: string;
 }
 
-export function CardView({ card, power, selected, dimmed, target, onClick, testId }: CardViewProps) {
+export function CardView({ card, power, size = "board", selected, dimmed, target, onClick, testId }: CardViewProps) {
   const unit: UnitCard | null = card.kind === "unit" ? card : null;
   const shown = unit ? (power ?? unit.basePower) : null;
   const change = unit && shown !== null ? (shown > unit.basePower ? "boosted" : shown < unit.basePower ? "reduced" : "") : "";
 
   const classes = [
     "card",
+    `size-${size}`,
     unit ? "unit" : "special",
     unit?.isHero ? "hero" : "",
-    unit ? `row-${unit.row}` : "",
     selected ? "selected" : "",
     dimmed ? "dimmed" : "",
     target ? "target" : "",
@@ -69,13 +61,16 @@ export function CardView({ card, power, selected, dimmed, target, onClick, testI
     .filter(Boolean)
     .join(" ");
 
-  const help = unit ? unit.abilities.map((a) => ABILITY[a].help).join(" ") : specialHelp(card as SpecialCard);
+  const help = unit
+    ? [card.name, ...unit.abilities.map((a) => ABILITY_BADGE[a].help)].join(". ")
+    : `${card.name}. ${specialHelp(card as SpecialCard)}`;
   const label = unit
     ? `${card.name}, strength ${shown}${unit.isHero ? ", hero" : ""}, ${ROW_LABEL[unit.row]}`
     : `${card.name}, ${specialKind(card as SpecialCard)} card`;
 
   const body = (
     <>
+      <CardArt card={card} />
       {unit && shown !== null ? (
         <span className={`power ${change}`} aria-hidden="true">
           {shown}
@@ -85,17 +80,19 @@ export function CardView({ card, power, selected, dimmed, target, onClick, testI
           {specialKind(card as SpecialCard)}
         </span>
       )}
-      <span className="name">{card.name}</span>
       {unit && (
-        <span className="meta" aria-hidden="true">
-          <span className="row-tag">{ROW_SHORT[unit.row]}</span>
-          {unit.abilities.map((a) => (
-            <span key={a} className="chip">
-              {ABILITY[a].label}
-            </span>
-          ))}
-        </span>
+        <>
+          <span className="badges" aria-hidden="true">
+            {unit.abilities.map((a) => (
+              <span key={a} className="badge" style={{ background: ABILITY_BADGE[a].color }} title={ABILITY_BADGE[a].label}>
+                {ABILITY_BADGE[a].code}
+              </span>
+            ))}
+          </span>
+          <RowIcon row={unit.row} className="row-icon" />
+        </>
       )}
+      <span className="name">{card.name}</span>
     </>
   );
 

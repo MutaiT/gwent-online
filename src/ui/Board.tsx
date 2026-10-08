@@ -3,6 +3,7 @@ import { rowPower, unitPower } from "../engine/scoring";
 import type { RowName } from "../engine/types";
 import { CardView, ROW_LABEL } from "./CardView";
 import type { Choices } from "./controller";
+import { RowIcon } from "./art";
 
 const OPPONENT_ORDER: RowName[] = ["siege", "ranged", "close"];
 const PLAYER_ORDER: RowName[] = ["close", "ranged", "siege"];
@@ -21,43 +22,33 @@ interface RowProps {
 function RowView({ game, side, row, rowAction, targets, onAct }: RowProps) {
   const state = game.players[side].board[row];
   const label = ROW_LABEL[row];
-  const clickable = rowAction !== null;
-
-  const header = (
-    <>
-      <span className="row-label">{label}</span>
-      <span className="row-flags">
-        {state.weather && <span className="flag weather" title="Weather: non-hero units here count as 1">Weather</span>}
-        {state.hornCard && <span className="flag horn" title="Horn: units here are doubled">Horn</span>}
-      </span>
-      <span className="row-score" aria-label={`${label} total`}>
-        {rowPower(state)}
-      </span>
-    </>
-  );
+  const total = rowPower(state);
 
   return (
     <div
-      className={`row ${clickable ? "row-target" : ""}`}
+      className={`row ${side === 0 ? "mine" : "theirs"} ${rowAction ? "row-target" : ""} ${state.weather ? "has-weather" : ""}`}
       data-testid={`row-${side}-${row}`}
       aria-label={`${side === 0 ? "Your" : "Opponent's"} ${label} row`}
     >
-      {clickable ? (
-        <button type="button" className="row-head row-pick" onClick={() => onAct(rowAction)}>
-          {header}
-          <span className="row-pick-hint">Play here</span>
-        </button>
-      ) : (
-        <div className="row-head">{header}</div>
-      )}
+      <span className="row-score" aria-label={`${label} total`}>
+        {total}
+      </span>
+      <div className={`horn-slot ${state.hornCard ? "active" : ""}`} title={state.hornCard ? "Horn: this row is doubled" : `${label} horn slot`}>
+        {state.hornCard ? <span className="horn-label">Horn</span> : <RowIcon row={row} className="slot-icon" />}
+      </div>
       <div className="row-cards">
-        {state.units.length === 0 && <span className="row-empty">empty</span>}
+        {state.weather && (
+          <span className="weather-veil" title="Weather: non-hero units here count as 1">
+            Weather
+          </span>
+        )}
         {state.units.map((unit) => {
           const action = targets.get(unit.id);
           return (
             <CardView
               key={unit.id}
               card={unit}
+              size="board"
               power={unitPower(state, unit)}
               target={action !== undefined}
               onClick={action ? () => onAct(action) : undefined}
@@ -66,6 +57,11 @@ function RowView({ game, side, row, rowAction, targets, onAct }: RowProps) {
           );
         })}
       </div>
+      {rowAction && (
+        <button type="button" className="row-pick" onClick={() => onAct(rowAction)}>
+          Play here
+        </button>
+      )}
     </div>
   );
 }
