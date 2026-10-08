@@ -11,6 +11,9 @@ endorsed by CD PROJEKT RED. The pictures were taken from the card list on
 the game's cards. If you are the rights holder and want them removed, please open
 an issue and they will be taken down.
 
+The wooden board picture and the small interface images (deck backs, gems, shields and so on) come from
+[asundr/gwent-classic](https://github.com/asundr/gwent-classic); see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
 Card strengths, rows and abilities follow the original game. The card list was
 cross-checked against the open-source remake
 [asundr/gwent-classic](https://github.com/asundr/gwent-classic).

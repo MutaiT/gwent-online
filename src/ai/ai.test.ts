@@ -139,3 +139,52 @@ describe("the AI with the real cards", () => {
     expect(legalActions(g)).toContainEqual(choice);
   });
 });
+
+describe("the AI's opening redraw", () => {
+  function opening(hand: Card[]): GameState {
+    const g = newGame({ decks: [filler("a"), filler("b")], rng: seededRng(1), firstPlayer: 0, redraws: 2 });
+    g.players[0].hand = [];
+    g.players[1].hand = hand;
+    return applyAction(g, { type: "keepHand", player: 0 }).ok
+      ? (applyAction(g, { type: "keepHand", player: 0 }) as { ok: true; state: GameState }).state
+      : g;
+  }
+
+  it("swaps a weak plain unit", () => {
+    const g = opening([unit("strong", 9), unit("weak", 1), unit("ok", 8)]);
+    expect(g.pending).toMatchObject({ type: "redraw", player: 1 });
+    expect(chooseAction(g, 1).action).toEqual({ type: "redraw", player: 1, cardId: "weak" });
+  });
+
+  it("swaps a weather card", () => {
+    const frost: Card = { kind: "special", id: "frost", name: "Frost", effect: "weather", weather: "bitingFrost" };
+    const g = opening([unit("strong", 9), frost, unit("ok", 8)]);
+    expect(chooseAction(g, 1).action).toEqual({ type: "redraw", player: 1, cardId: "frost" });
+  });
+
+  it("keeps a good hand, including a weak card that has an ability", () => {
+    const spy = unit("spy", 1, "close", ["spy"]);
+    const g = opening([unit("strong", 9), spy, unit("ok", 8)]);
+    expect(chooseAction(g, 1).action).toEqual({ type: "keepHand", player: 1 });
+  });
+
+  it("every redraw it picks is legal, and a whole game with redraws finishes", () => {
+    for (let seed = 1; seed <= 12; seed++) {
+      const { decks, options } = demoDecks();
+      let g = newGame({ decks, rng: seededRng(seed), firstPlayer: 0, redraws: 2, ...options });
+      let seeds = [seed, seed + 500];
+      let steps = 0;
+      while (g.status === "playing") {
+        const side = g.current;
+        const choice = chooseAction(g, seeds[side]!);
+        seeds = side === 0 ? [choice.seed, seeds[1]!] : [seeds[0]!, choice.seed];
+        expect(legalActions(g)).toContainEqual(choice.action);
+        const result = applyAction(g, choice.action);
+        if (!result.ok) throw new Error(result.error);
+        g = result.state;
+        expect(++steps).toBeLessThan(500);
+      }
+      expect(g.pending).toBeNull();
+    }
+  }, 60_000);
+});

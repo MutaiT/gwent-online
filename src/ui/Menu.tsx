@@ -25,6 +25,7 @@ export function Menu({ onStart, initial }: MenuProps) {
 
   return (
     <main className="menu" aria-label="Choose your faction">
+      <h1 className="menu-title">Gwent Online</h1>
       <h2>Choose your faction</h2>
       <div className="faction-grid" role="radiogroup" aria-label="Faction">
         {FACTIONS.map((f) => (

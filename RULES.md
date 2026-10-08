@@ -16,6 +16,7 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
 - [x] The round ends when both players have passed; the higher total wins
 - [x] Cards on the board go to the graveyard at the end of each round
 - [x] Hands carry over between rounds (no redraw except through abilities)
+- [x] Opening redraw: before round 1 each player may swap up to 2 cards from their hand (player 0 first). A swapped card goes back into the deck at a random place and cannot be drawn straight back. The real game does this too: check whether the order of the two players and the exact limit match.
 - [x] The game ends when a player has no lives left; both at zero is a draw
 - [ ] **Verify:** who starts rounds 2 and 3. The engine currently has the round winner start, and the same player start again after a draw. This is my assumption: check it against the original game.
 

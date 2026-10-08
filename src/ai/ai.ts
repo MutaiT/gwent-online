@@ -1,7 +1,7 @@
 import { applyAction, legalActions, other, type Action, type GameState, type PlayerId } from "../engine/game";
 import { stepRandom } from "../engine/rng";
 import { boardPower } from "../engine/scoring";
-import type { UnitCard } from "../engine/types";
+import type { Card, UnitCard } from "../engine/types";
 
 export interface AiChoice {
   action: Action;
@@ -24,6 +24,16 @@ function cost(state: GameState, action: Action): number {
   const card = state.players[action.player].hand.find((c) => c.id === action.cardId);
   return card?.kind === "unit" ? card.basePower : 5;
 }
+
+/** How much the AI values a card in its opening hand. Low-value cards are worth swapping. */
+function worth(card: Card): number {
+  if (card.kind === "unit") return (card.isHero ? 20 : 0) + card.basePower + card.abilities.length * 4;
+  if (card.effect === "weather") return card.weather === "clearWeather" ? 2 : 3;
+  return { horn: 12, scorch: 10, decoy: 6 }[card.effect];
+}
+
+/** Swap the weakest card while it is a throwaway (a plain weak unit or a weather card). */
+const REDRAW_BELOW = 4;
 
 /**
  * A simple opponent: it never cheats, it only picks from `legalActions`.
@@ -50,6 +60,15 @@ export function chooseAction(state: GameState, seed: number): AiChoice {
 
   if (state.pending?.type === "chooseFirst") {
     return done({ type: "chooseFirst", player: me, first: me });
+  }
+  if (state.pending?.type === "redraw") {
+    const hand = state.players[me].hand;
+    const weakest = hand.reduce((a, b) => (worth(b) < worth(a) ? b : a));
+    return done(
+      worth(weakest) < REDRAW_BELOW
+        ? { type: "redraw", player: me, cardId: weakest.id }
+        : { type: "keepHand", player: me },
+    );
   }
   if (state.pending?.type === "revive") {
     const options = actions.filter((a): a is Extract<Action, { type: "revive" }> => a.type === "revive");

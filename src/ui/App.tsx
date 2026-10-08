@@ -31,6 +31,9 @@ function statusText(state: UIState): string {
     return game.pending.player === HUMAN ? "Choose a unit to bring back" : "Opponent is choosing a unit to revive";
   }
   if (game.pending?.type === "chooseFirst") return "Choose who goes first";
+  if (game.pending?.type === "redraw") {
+    return game.pending.player === HUMAN ? "Choose cards to redraw" : "Opponent is choosing cards to redraw";
+  }
   if (game.current === AI) return "Opponent is thinking…";
   return game.players[AI].passed
     ? "Your turn. The opponent has passed: play on, or pass to end the round."
@@ -68,6 +71,7 @@ export function App({ seed, aiDelayMs = 700, initial, setup }: AppProps) {
   };
 
   const revivePending = game.pending?.type === "revive" && game.pending.player === HUMAN;
+  const redrawPending = game.pending?.type === "redraw" && game.pending.player === HUMAN;
   const choosePending = game.pending?.type === "chooseFirst" && game.pending.player === HUMAN;
 
   let prompt: string | null = null;
@@ -81,9 +85,6 @@ export function App({ seed, aiDelayMs = 700, initial, setup }: AppProps) {
   if (screen === "menu") {
     return (
       <div className="app">
-        <header className="topbar">
-          <h1>Gwent Online</h1>
-        </header>
         <Menu
           initial={state.setup}
           onStart={(chosen) => {
@@ -100,16 +101,6 @@ export function App({ seed, aiDelayMs = 700, initial, setup }: AppProps) {
       {(previewed) => (
         <div className="app">
           <CardPreview item={previewed} />
-          <header className="topbar">
-            <h1>Gwent Online</h1>
-            <h2 className="round-title">Round {game.round} of 3</h2>
-            <p className="status" role="status" data-testid="status">
-              {statusText(state)}
-            </p>
-            <button type="button" className="btn small" onClick={() => setScreen("menu")}>
-              New game
-            </button>
-          </header>
 
           {state.error && (
             <div className="error" role="alert">
@@ -120,12 +111,26 @@ export function App({ seed, aiDelayMs = 700, initial, setup }: AppProps) {
             </div>
           )}
 
-          <main className="table" aria-label="Game board">
-            <div className="table-grid">
-              <PlayersColumn game={game} canAct={canAct} onAct={act} />
-              <Board game={game} choices={choices} onAct={act} />
-              <PilesColumn game={game} canAct={canAct} onAct={act} onViewGraveyard={setViewing} />
+          <main className="stage" aria-label="Game board">
+            <div className="hud">
+              <button
+                type="button"
+                className="exit-button"
+                aria-label="New game"
+                title="New game"
+                onClick={() => setScreen("menu")}
+              >
+                <img src="/img/ui/exit.svg" alt="" />
+              </button>
+              <h2 className="round-title">Round {game.round} of 3</h2>
+              <p className="status" role="status" data-testid="status">
+                {statusText(state)}
+              </p>
             </div>
+
+            <PlayersColumn game={game} canAct={canAct} onAct={act} />
+            <Board game={game} choices={choices} onAct={act} />
+            <PilesColumn game={game} canAct={canAct} onAct={act} onViewGraveyard={setViewing} />
 
             <div className="hand-bar">
               <div className="mobile-actions">
@@ -182,15 +187,41 @@ export function App({ seed, aiDelayMs = 700, initial, setup }: AppProps) {
                 ))}
               </div>
             </div>
-
-            <LogPanel log={state.log} />
-            <footer className="credits">
-          Unofficial fan project. Card names and pictures belong to CD PROJEKT RED.{" "}
-          <a href="https://github.com/MutaiT/gwent-online/blob/main/ART_CREDITS.md" target="_blank" rel="noreferrer">
-            Credits
-          </a>
-        </footer>
           </main>
+
+          <LogPanel log={state.log} />
+          <footer className="credits">
+            Unofficial fan project. Card names and pictures belong to CD PROJEKT RED.{" "}
+            <a href="https://github.com/MutaiT/gwent-online/blob/main/ART_CREDITS.md" target="_blank" rel="noreferrer">
+              Credits
+            </a>
+          </footer>
+
+          {redrawPending && game.pending?.type === "redraw" && (
+            <div className="redraw" role="dialog" aria-modal="true" aria-label="Redraw">
+              <p className="redraw-banner">
+                Choose up to {game.pending.left} {game.pending.left === 1 ? "card" : "cards"} to redraw.
+              </p>
+              <div className="redraw-cards">
+                {me.hand.map((card) => (
+                  <CardView
+                    key={card.id}
+                    card={card}
+                    size="list"
+                    onClick={() => act({ type: "redraw", player: HUMAN, cardId: card.id })}
+                    testId={`redraw-${card.id}`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn primary big"
+                onClick={() => act({ type: "keepHand", player: HUMAN })}
+              >
+                {game.pending.left < game.redraws ? "Done" : "Keep hand"}
+              </button>
+            </div>
+          )}
 
           {revivePending && (
             <Modal title="Bring a unit back">

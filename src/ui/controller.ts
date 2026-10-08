@@ -1,6 +1,6 @@
 import { chooseAction } from "../ai/ai";
 import { DEFAULT_SETUP, buildMatch, type MatchSetup } from "../data/decks";
-import { applyAction, legalActions, newGame, type Action, type GameState, type PlayerId } from "../engine/game";
+import { REDRAWS, applyAction, legalActions, newGame, type Action, type GameState, type PlayerId } from "../engine/game";
 import { seededRng } from "../engine/rng";
 import type { Card, RowName } from "../engine/types";
 
@@ -30,7 +30,7 @@ export type UIAction =
 export function initialState(seed: number, setup: MatchSetup = DEFAULT_SETUP): UIState {
   const { decks, options } = buildMatch(setup);
   return {
-    game: newGame({ decks, rng: seededRng(seed), ...options }),
+    game: newGame({ decks, rng: seededRng(seed), redraws: REDRAWS, ...options }),
     log: [],
     selected: null,
     error: null,
@@ -58,6 +58,10 @@ export function describeAction(state: GameState, action: Action): string {
       return `${name} revived ${nameIn(me.graveyard, action.cardId)}`;
     case "chooseFirst":
       return `${name} chose ${who(action.first)} to go first`;
+    case "redraw":
+      return `${name} redrew a card`;
+    case "keepHand":
+      return `${name} kept ${action.player === HUMAN ? "your" : "their"} hand`;
     case "play": {
       const card = nameIn(me.hand, action.cardId);
       if (action.row) return `${name} played ${card} on the ${action.row} row`;

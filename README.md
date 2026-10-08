@@ -20,7 +20,7 @@ npm run dev
 ```
 
 Pick a faction and leader on the first screen (your opponent plays a random other
-faction), then click a card in your hand, then click **Play** (or click the
+faction), redraw up to 2 cards from your opening hand, then click a card in your hand, then click **Play** (or click the
 card again). Cards that need a choice highlight where they can go: a horn or an
 agile unit asks for a row on your side, a decoy asks for one of your units, and
 a medic opens a list of units to bring back. Pass when you are happy with the
@@ -40,7 +40,9 @@ for choosing cards).
 
 Every card name, picture and trademark belongs to CD PROJEKT RED. This is an
 unofficial fan project and is not affiliated with or endorsed by them; see
-[ART_CREDITS.md](ART_CREDITS.md). `src/data/demoCards.ts` also holds a second,
+[ART_CREDITS.md](ART_CREDITS.md). The board picture, interface images and layout follow
+[asundr/gwent-classic](https://github.com/asundr/gwent-classic); see
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). `src/data/demoCards.ts` also holds a second,
 fully original deck pair with public-domain art, in case a build needs to avoid
 the official pictures.
 
@@ -57,7 +59,7 @@ the official pictures.
 src/engine   rules: state, actions, scoring, decks (no UI)
 src/ai       the opponent, which only ever picks from the engine's legal actions
 src/data     the card catalogue, starter decks, and the original demo decks
-src/ui       the React board
+src/ui       the React board (laid out on a 16:9 stage after asundr/gwent-classic)
 ```
 
 ## Develop

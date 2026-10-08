@@ -17,6 +17,7 @@ const decoy: SpecialCard = { kind: "special", id: "decoy", name: "Test Decoy", e
 /** A human-turn state whose hand is exactly `hand`, with the given graveyard and board. */
 function state(hand: Card[], extra: { graveyard?: Card[]; board?: UnitCard[] } = {}): UIState {
   const s = initialState(1);
+  s.game.pending = null; // skip the opening redraw
   s.game.current = HUMAN;
   s.game.roundStarter = HUMAN;
   s.game.players[HUMAN].hand = hand;
@@ -321,6 +322,71 @@ describe("the table", () => {
   });
 });
 
+describe("the opening redraw", () => {
+  /** A fresh game from the menu path, as a player would see it. */
+  const fresh = () => render(<App setup={{ player: "northernRealms", opponent: "monsters" }} seed={5} aiDelayMs={0} />);
+
+  it("opens a new game with the redraw screen: a banner, your whole hand, and a way to keep it", () => {
+    fresh();
+    const dialog = screen.getByRole("dialog", { name: "Redraw" });
+    expect(within(dialog).getByText("Choose up to 2 cards to redraw.")).toBeTruthy();
+    expect(within(dialog).getAllByTestId(/^redraw-/)).toHaveLength(10);
+    expect(within(dialog).getByRole("button", { name: "Keep hand" })).toBeTruthy();
+    expect(screen.getByTestId("status").textContent).toBe("Choose cards to redraw");
+  });
+
+  it("clicking a card swaps it for a new one and counts down", async () => {
+    const user = userEvent.setup();
+    fresh();
+    const dialog = screen.getByRole("dialog", { name: "Redraw" });
+    const before = within(dialog).getAllByTestId(/^redraw-/).map((e) => e.dataset.testid);
+    await user.click(within(dialog).getByTestId(before[3]!));
+    expect(within(dialog).getByText("Choose up to 1 card to redraw.")).toBeTruthy();
+    const after = within(dialog).getAllByTestId(/^redraw-/).map((e) => e.dataset.testid);
+    expect(after).toHaveLength(10);
+    expect(after).not.toContain(before[3]);
+    expect(after.filter((id) => !before.includes(id))).toHaveLength(1);
+    expect(screen.getByText("You redrew a card")).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Done" })).toBeTruthy();
+  });
+
+  it("after two swaps the screen closes and the opponent takes its turn at redrawing", async () => {
+    const user = userEvent.setup();
+    fresh();
+    for (let i = 0; i < 2; i++) {
+      const dialog = screen.getByRole("dialog", { name: "Redraw" });
+      await user.click(within(dialog).getAllByTestId(/^redraw-/)[0]!);
+    }
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Redraw" })).toBeNull());
+    await waitFor(() => expect(screen.getAllByText(/^Opponent (redrew a card|kept their hand)/).length).toBeGreaterThan(0));
+  });
+
+  it("keeping the hand leaves it unchanged and hands over to the opponent", async () => {
+    const user = userEvent.setup();
+    fresh();
+    const dialog = screen.getByRole("dialog", { name: "Redraw" });
+    const before = within(dialog).getAllByTestId(/^redraw-/).map((e) => e.dataset.testid);
+    await user.click(within(dialog).getByRole("button", { name: "Keep hand" }));
+    expect(screen.getByText("You kept your hand")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Redraw" })).toBeNull());
+    expect(screen.getAllByTestId(/^hand-/).map((e) => e.dataset.testid!.replace("hand-", "redraw-"))).toEqual(before);
+  });
+
+  it("the board is not playable until the redraw is over", () => {
+    fresh();
+    for (const card of screen.getAllByTestId(/^hand-/)) expect(card.tagName).not.toBe("BUTTON");
+  });
+
+  it("while the opponent is choosing, the screen is gone and the status says so", () => {
+    const s = state([unit("a", 3)]);
+    s.game.current = AI;
+    s.game.pending = { type: "redraw", player: AI, left: 2 };
+    render(<App initial={s} aiDelayMs={10_000_000} />);
+    expect(screen.queryByRole("dialog", { name: "Redraw" })).toBeNull();
+    expect(screen.getByTestId("status").textContent).toBe("Opponent is choosing cards to redraw");
+  });
+});
+
 describe("the card preview", () => {
   it("shows a large card with its abilities while you hover a card, and hides it afterwards", async () => {
     const user = userEvent.setup();
@@ -390,7 +456,8 @@ describe("the end of a game", () => {
     const user = userEvent.setup();
     render(<App initial={finished(0)} aiDelayMs={10_000_000} />);
     await user.click(screen.getByRole("button", { name: "Play again" }));
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "You won!" })).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Redraw" })).toBeTruthy();
     expect(screen.getByText("Round 1 of 3")).toBeTruthy();
     expect(screen.getAllByTestId(/^hand-/)).toHaveLength(10);
   });

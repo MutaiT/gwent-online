@@ -3,7 +3,9 @@ import { rowPower, unitPower } from "../engine/scoring";
 import type { RowName } from "../engine/types";
 import { CardView, ROW_LABEL } from "./CardView";
 import type { Choices } from "./controller";
-import { RowIcon } from "./art";
+
+/** Which weather picture lies over each row when weather is on it. */
+const WEATHER_OVERLAY: Record<RowName, string> = { close: "frost", ranged: "fog", siege: "rain" };
 
 const OPPONENT_ORDER: RowName[] = ["siege", "ranged", "close"];
 const PLAYER_ORDER: RowName[] = ["close", "ranged", "siege"];
@@ -28,13 +30,17 @@ function RowView({ game, side, row, rowAction, targets, onAct }: RowProps) {
     <div
       className={`row ${side === 0 ? "mine" : "theirs"} ${rowAction ? "row-target" : ""} ${state.weather ? "has-weather" : ""}`}
       data-testid={`row-${side}-${row}`}
+      data-weather={state.weather ? WEATHER_OVERLAY[row] : undefined}
       aria-label={`${side === 0 ? "Your" : "Opponent's"} ${label} row`}
     >
       <span className="row-score" aria-label={`${label} total`}>
         {total}
       </span>
-      <div className={`horn-slot ${state.hornCard ? "active" : ""}`} title={state.hornCard ? "Horn: this row is doubled" : `${label} horn slot`}>
-        {state.hornCard ? <span className="horn-label">Horn</span> : <RowIcon row={row} className="slot-icon" />}
+      <div
+        className={`horn-slot ${state.hornCard ? "active" : ""}`}
+        title={state.hornCard ? "Horn: this row is doubled" : `${label} horn slot`}
+      >
+        {state.hornCard && <span className="horn-label">Horn</span>}
       </div>
       <div className="row-cards">
         {state.weather && (

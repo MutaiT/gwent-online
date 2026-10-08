@@ -6,6 +6,7 @@ import { AI, HUMAN, choicesFor, describeAction, initialState, playableIds, reduc
 /** A state where it is the human's turn, whatever the seed said. */
 function humanTurn(seed = 1): UIState {
   const s = initialState(seed);
+  s.game.pending = null; // skip the opening redraw
   s.game.current = HUMAN;
   s.game.roundStarter = HUMAN;
   return s;
@@ -27,6 +28,33 @@ describe("initialState", () => {
 
   it("is repeatable for the same seed", () => {
     expect(initialState(9).game.players[0].hand.map((c) => c.id)).toEqual(initialState(9).game.players[0].hand.map((c) => c.id));
+  });
+});
+
+describe("the opening redraw in the controller", () => {
+  it("a new game starts with the human choosing cards to redraw", () => {
+    const s = initialState(4);
+    expect(s.game.pending).toEqual({ type: "redraw", player: HUMAN, left: 2 });
+    expect(s.game.current).toBe(HUMAN);
+    expect(s.game.players[HUMAN].hand).toHaveLength(10);
+  });
+
+  it("a redraw swaps the card and is logged without naming it", () => {
+    const s = initialState(4);
+    const out = s.game.players[HUMAN].hand[0]!.id;
+    const next = reducer(s, { type: "act", action: { type: "redraw", player: HUMAN, cardId: out } });
+    expect(next.game.players[HUMAN].hand.some((c) => c.id === out)).toBe(false);
+    expect(next.log).toEqual(["You redrew a card"]);
+  });
+
+  it("the AI redraws or keeps its hand on its turn, then play begins", () => {
+    let s = reducer(initialState(4), { type: "act", action: { type: "keepHand", player: HUMAN } });
+    expect(s.game.current).toBe(AI);
+    expect(s.game.pending).toMatchObject({ type: "redraw", player: AI });
+    for (let i = 0; i < 3 && s.game.pending; i++) s = reducer(s, { type: "ai" });
+    expect(s.game.pending).toBeNull();
+    expect(s.log[0]).toBe("You kept your hand");
+    expect(s.log.slice(1).every((l) => /^Opponent (redrew a card|kept their hand)$/.test(l))).toBe(true);
   });
 });
 

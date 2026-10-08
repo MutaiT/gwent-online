@@ -1,6 +1,5 @@
-import "@fontsource/cinzel/600.css";
-import "@fontsource/eb-garamond/400.css";
-import "@fontsource/eb-garamond/600.css";
+import "@fontsource/roboto-condensed/400.css";
+import "@fontsource/roboto-condensed/700.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { FACTIONS, type MatchSetup } from "./data/decks";

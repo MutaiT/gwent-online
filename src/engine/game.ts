@@ -45,7 +45,9 @@ export interface RoundResult {
 export type PendingChoice =
   | { type: "revive"; player: PlayerId }
   /** A Scoia'tael player picks who plays first. */
-  | { type: "chooseFirst"; player: PlayerId };
+  | { type: "chooseFirst"; player: PlayerId }
+  /** At the start of the match a player may swap up to `left` cards from their hand. */
+  | { type: "redraw"; player: PlayerId; left: number };
 
 export interface GameState {
   players: [PlayerState, PlayerState];
@@ -61,6 +63,8 @@ export interface GameState {
   pending: PendingChoice | null;
   /** State of the game's own random generator (Monsters and Skellige use it). */
   rngState: number;
+  /** How many opening-hand swaps each player gets (0 for none). */
+  redraws: number;
 }
 
 export type Action =
@@ -79,7 +83,11 @@ export type Action =
   /** Resolve a medic: choose a non-hero unit from your own graveyard. */
   | { type: "revive"; player: PlayerId; cardId: string }
   /** Resolve Scoia'tael's choice of who goes first. */
-  | { type: "chooseFirst"; player: PlayerId; first: PlayerId };
+  | { type: "chooseFirst"; player: PlayerId; first: PlayerId }
+  /** Opening redraw: put this card back in the deck and take a new one. */
+  | { type: "redraw"; player: PlayerId; cardId: string }
+  /** Opening redraw: keep the hand as it is. */
+  | { type: "keepHand"; player: PlayerId };
 
 export type Result = { ok: true; state: GameState } | { ok: false; error: string };
 
@@ -113,7 +121,14 @@ export interface NewGameOptions {
    * Off by default so tests and experiments can use small decks.
    */
   validateDecks?: boolean;
+  /**
+   * How many cards each player may swap from their opening hand (the real game
+   * allows 2). Off by default so small tests can start playing straight away.
+   */
+  redraws?: number;
 }
+
+export const REDRAWS = 2;
 
 function newPlayer(
   deck: Card[],
@@ -148,6 +163,7 @@ export function newGame({
   factions = [null, null],
   leaders = [null, null],
   validateDecks = false,
+  redraws = 0,
 }: NewGameOptions): GameState {
   if (validateDecks) {
     for (const side of [0, 1] as const) {
@@ -178,7 +194,7 @@ export function newGame({
     first = coinToss(rng);
   }
 
-  return {
+  const state: GameState = {
     players,
     round: 1,
     current: first,
@@ -188,7 +204,32 @@ export function newGame({
     winner: null,
     pending,
     rngState,
+    redraws,
   };
+  if (pending === null) beginRedraw(state);
+  return state;
+}
+
+/**
+ * Starts the opening redraw, if the match has one. Player 0 swaps first, then
+ * player 1. A player with no cards to swap in is skipped.
+ */
+function beginRedraw(state: GameState): void {
+  nextRedraw(state, null);
+}
+
+function nextRedraw(state: GameState, after: PlayerId | null): void {
+  const order: PlayerId[] = [0, 1];
+  const start = after === null ? 0 : order.indexOf(after) + 1;
+  for (const player of order.slice(start)) {
+    if (state.redraws > 0 && state.players[player].deck.length > 0) {
+      state.pending = { type: "redraw", player, left: state.redraws };
+      state.current = player;
+      return;
+    }
+  }
+  state.pending = null;
+  state.current = state.roundStarter;
 }
 
 function fail(error: string): Result {
@@ -440,6 +481,9 @@ export function applyAction(state: GameState, action: Action): Result {
 
   if (state.pending?.type === "revive" && action.type !== "revive") return fail("Choose a unit to revive first");
   if (state.pending?.type === "chooseFirst" && action.type !== "chooseFirst") return fail("Choose who goes first");
+  if (state.pending?.type === "redraw" && action.type !== "redraw" && action.type !== "keepHand") {
+    return fail("Choose cards to redraw, or keep your hand");
+  }
 
   const next = structuredClone(state);
   const me = next.players[action.player];
@@ -449,6 +493,29 @@ export function applyAction(state: GameState, action: Action): Result {
     next.pending = null;
     next.current = action.first;
     next.roundStarter = action.first;
+    beginRedraw(next);
+    return { ok: true, state: next };
+  }
+
+  if (action.type === "keepHand") {
+    if (next.pending?.type !== "redraw") return fail("There is no redraw to finish");
+    nextRedraw(next, action.player);
+    return { ok: true, state: next };
+  }
+
+  if (action.type === "redraw") {
+    const pending = next.pending;
+    if (pending?.type !== "redraw") return fail("There is no redraw to make");
+    const index = me.hand.findIndex((c) => c.id === action.cardId);
+    if (index === -1) return fail("That card is not in your hand");
+    // Draw first, then put the old card back at a random place, so it cannot come straight back.
+    const drawn = me.deck.shift();
+    if (!drawn) return fail("Your deck has no cards left to draw");
+    const [returned] = me.hand.splice(index, 1, drawn);
+    me.deck.splice(randomInt(next, me.deck.length + 1), 0, returned as Card);
+    const left = pending.left - 1;
+    if (left <= 0 || me.deck.length === 0) nextRedraw(next, action.player);
+    else next.pending = { type: "redraw", player: action.player, left };
     return { ok: true, state: next };
   }
 
@@ -499,6 +566,12 @@ export function legalActions(state: GameState): Action[] {
   }
   if (state.pending?.type === "revive") {
     return revivable(me).map((card): Action => ({ type: "revive", player, cardId: card.id }));
+  }
+  if (state.pending?.type === "redraw") {
+    return [
+      ...me.hand.map((card): Action => ({ type: "redraw", player, cardId: card.id })),
+      { type: "keepHand", player },
+    ];
   }
 
   const actions: Action[] = [];
