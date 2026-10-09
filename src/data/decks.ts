@@ -1,4 +1,5 @@
 import type { NewGameOptions } from "../engine/game";
+import { validateDeck } from "../engine/deck";
 import type { Card, Faction, Leader, SpecialCard, UnitCard } from "../engine/types";
 import { CATALOG, type CatalogEntry } from "./catalog";
 
@@ -94,18 +95,58 @@ export function factionPortrait(faction: Faction): string {
 }
 
 /**
+ * Every card a faction may put in a deck: its own units, the neutral units, and the
+ * special and weather cards, minus the ones the engine cannot play yet. Each copy is
+ * its own entry (they have different pictures).
+ */
+export function collectionFor(faction: Faction): CatalogEntry[] {
+  return CATALOG.filter(
+    (e) => e.kind !== "leader" && usable(e) && (e.faction === faction || e.faction === "neutral"),
+  );
+}
+
+/** How many of a faction's own units the starter deck holds (the neutral units come on top). */
+const STARTER_FACTION_UNITS = 26;
+
+/**
+ * The cards of the ready-made deck for a faction: its heroes, its cards with abilities and its
+ * strongest plain units, kept together with all their copies, up to about 26 units; then a few
+ * neutral units, and some special and weather cards.
+ */
+export function starterEntries(faction: Faction): CatalogEntry[] {
+  const own = CATALOG.filter((e) => e.kind === "unit" && e.faction === faction && usable(e));
+  const families = new Map<string, CatalogEntry[]>();
+  for (const e of own) families.set(e.name, [...(families.get(e.name) ?? []), e]);
+  const rank = (family: CatalogEntry[]): number => {
+    const first = family[0] as CatalogEntry;
+    return first.hero ? 2 : (first.abilities?.length ?? 0) > 0 ? 1 : 0;
+  };
+  const ordered = [...families.values()].sort(
+    (a, b) => rank(b) - rank(a) || (b[0]?.strength ?? 0) - (a[0]?.strength ?? 0) || (a[0]?.name ?? "").localeCompare(b[0]?.name ?? ""),
+  );
+  const factionUnits: CatalogEntry[] = [];
+  for (const family of ordered) {
+    if (factionUnits.length + family.length <= STARTER_FACTION_UNITS) factionUnits.push(...family);
+  }
+  const neutrals = NEUTRAL_UNITS.flatMap((name) =>
+    CATALOG.filter((e) => e.kind === "unit" && e.faction === "neutral" && e.name === name && usable(e)).slice(0, 1),
+  );
+  const specials = STARTER_SPECIALS.flatMap(([kind, copies]) =>
+    CATALOG.filter((e) => e.kind === "special" && e.special === kind).slice(0, copies),
+  );
+  const weather = STARTER_WEATHER.flatMap((w) =>
+    CATALOG.filter((e) => e.kind === "weather" && e.weather === w).slice(0, 1),
+  );
+  return [...factionUnits, ...neutrals, ...specials, ...weather];
+}
+
+/**
  * A ready-made deck for a faction: all of its usable units, a handful of
  * neutral heroes and units, and a few special and weather cards.
  * `prefix` keeps card ids unique when both players use the same faction.
  */
 export function starterDeck(faction: Faction, prefix: string): Card[] {
-  const factionUnits = CATALOG.filter((e) => e.kind === "unit" && e.faction === faction && usable(e));
-  const neutrals = NEUTRAL_UNITS.flatMap((name) => CATALOG.filter((e) => e.kind === "unit" && e.faction === "neutral" && e.name === name && usable(e)).slice(0, 1));
-  const specials = STARTER_SPECIALS.flatMap(([kind, copies]) =>
-    CATALOG.filter((e) => e.kind === "special" && e.special === kind).slice(0, copies),
-  );
-  const weather = STARTER_WEATHER.flatMap((w) => CATALOG.filter((e) => e.kind === "weather" && e.weather === w).slice(0, 1));
-  return [...factionUnits, ...neutrals, ...specials, ...weather].map((e) => toCard(e, prefix));
+  return starterEntries(faction).map((e) => toCard(e, prefix));
 }
 
 export interface MatchSetup {
@@ -114,6 +155,11 @@ export interface MatchSetup {
   /** Leader ids. Leave out to use the faction's first usable leader. */
   playerLeader?: string;
   opponentLeader?: string;
+  /**
+   * Catalogue ids of your own deck. Leave out for the starter deck. A deck that breaks the
+   * deck-building rules, or has cards the faction may not use, is ignored in favour of the starter.
+   */
+  playerDeck?: string[];
 }
 
 export const DEFAULT_SETUP: MatchSetup = {
@@ -134,13 +180,24 @@ function chooseLeader(faction: Faction, id?: string): Leader {
   return found ?? (options[0] as Leader);
 }
 
+/** Turns catalogue ids into cards, or null if any id is unknown, repeated, or not allowed for the faction. */
+export function deckFromIds(faction: Faction, ids: readonly string[], prefix: string): Card[] | null {
+  const allowed = new Map(collectionFor(faction).map((e) => [e.id, e]));
+  if (new Set(ids).size !== ids.length) return null;
+  const entries = ids.map((id) => allowed.get(id));
+  if (entries.some((e) => e === undefined)) return null;
+  return (entries as CatalogEntry[]).map((e) => toCard(e, prefix));
+}
+
 export function buildMatch(setup: MatchSetup = DEFAULT_SETUP): Match {
+  const leaders: [Leader, Leader] = [
+    chooseLeader(setup.player, setup.playerLeader),
+    chooseLeader(setup.opponent, setup.opponentLeader),
+  ];
+  const custom = setup.playerDeck ? deckFromIds(setup.player, setup.playerDeck, "p0-") : null;
+  const mine = custom && validateDeck(custom, setup.player, leaders[0]).valid ? custom : starterDeck(setup.player, "p0-");
   return {
-    decks: [starterDeck(setup.player, "p0-"), starterDeck(setup.opponent, "p1-")],
-    options: {
-      factions: [setup.player, setup.opponent],
-      leaders: [chooseLeader(setup.player, setup.playerLeader), chooseLeader(setup.opponent, setup.opponentLeader)],
-      validateDecks: true,
-    },
+    decks: [mine, starterDeck(setup.opponent, "p1-")],
+    options: { factions: [setup.player, setup.opponent], leaders, validateDecks: true },
   };
 }

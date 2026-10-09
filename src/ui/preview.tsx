@@ -32,11 +32,37 @@ const WEATHER_TEXT = {
   clearWeather: "Clear weather: removes all weather effects.",
 } as const;
 
-export function CardPreview({ item }: { item: Previewed | null }) {
+/**
+ * `panel` (the default) is the big card beside the board. `bar` is a slim description strip along the
+ * bottom of the screen, for screens that already show the whole card, like the deck builder.
+ */
+export function CardPreview({ item, variant = "panel" }: { item: Previewed | null; variant?: "panel" | "bar" }) {
   if (!item) return null;
   const { card, power } = item;
   const unit = card.kind === "unit" ? card : null;
   const special = card.kind === "special" ? card : null;
+
+  if (variant === "bar") {
+    const lines: string[] = [];
+    if (unit?.isHero) lines.push("Hero: not affected by weather, horn, bond, morale, scorch or decoy.");
+    for (const a of unit?.abilities ?? []) lines.push(ABILITY_BADGE[a].help);
+    if (unit && !unit.isHero && unit.abilities.length === 0) lines.push("No special ability.");
+    if (special)
+      lines.push(special.effect === "weather" ? WEATHER_TEXT[special.weather] : SPECIAL_TEXT[special.effect]);
+    return (
+      <aside className="preview-bar" aria-label="Card description" data-testid="preview">
+        <strong className="preview-bar-name">{card.name}</strong>
+        <span className="preview-bar-kind">
+          {unit
+            ? `${unit.isHero ? "Hero · " : ""}${ROW_LABEL[unit.row]} · strength ${unit.basePower}`
+            : special?.effect === "weather"
+              ? "Weather"
+              : "Special"}
+        </span>
+        <span className="preview-bar-text">{lines.join(" ")}</span>
+      </aside>
+    );
+  }
   const face = card.officialFace === true && card.art !== undefined;
   const shown = unit ? (power ?? unit.basePower) : null;
   const change =

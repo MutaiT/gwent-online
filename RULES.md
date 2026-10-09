@@ -79,4 +79,6 @@ Status: `[x]` implemented and tested, `[ ]` not yet.
 - [x] Every card has a unique id
 - [x] A leader from the chosen faction (or a neutral leader)
 - [x] `newGame({ validateDecks: true })` rejects an invalid deck with a clear message
+- [x] The deck builder screen enforces these rules as you build, and saves a legal deck per faction in the browser
+- [ ] **Verify:** in the original, how many copies of each card you own (here every card in the collection is owned, with the copy counts from the card list), and whether neutral cards can be used by every faction
 - [ ] **Verify:** limits on copies of the same card, and whether a faction may have only some leaders
